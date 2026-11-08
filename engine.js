@@ -4,7 +4,7 @@
 
   const LINIEN = {
     er:  { kurz: "-er", name: "Verben auf -er", beispiel: "parler" },
-    ir:  { kurz: "-iss", name: "-ir mit -iss-", beispiel: "finir" },
+    ir:  { kurz: "-ir", unter: "iss", name: "-ir mit -iss-", beispiel: "finir" },
     irk: { kurz: "-ir", name: "-ir ohne -iss-", beispiel: "partir" },
     dre: { kurz: "-dre", name: "Verben auf -dre", beispiel: "attendre" },
     irr: { kurz: "!", name: "Unregelmäßige Verben", beispiel: "faire" }
@@ -150,7 +150,11 @@
     return AUX["être"][p] + " en train " + deVor(inf);
   }
 
-  function endung(pp, g, pl) { return pp + (g === "f" ? "e" : "") + (pl ? "s" : ""); }
+  /* Endet das Partizip schon auf -s (mis, assis), kommt im männlichen Plural nichts dazu */
+  function endung(pp, g, pl) {
+    const basis = pp + (g === "f" ? "e" : "");
+    return basis + (pl && !/s$/.test(basis) ? "s" : "");
+  }
 
   /* Personen fürs Passé composé. Bei être muss das Geschlecht klar sein, sonst gäbe es mehrere richtige Antworten. */
   const PC_AVOIR = [
@@ -343,7 +347,7 @@
         [gegen + " " + k.pp, gegen + " " + pp].map(wickel),
         [0, 1, 2, 3, 4, 5].filter((i) => i !== p).map((i) => wickel(hilfs[k.aux][i] + " " + pp)),
         falschPP[0].concat(falschPP[1]).map((f) => wickel(aux + " " + f)),
-        (etre ? [k.pp, k.pp + "e", k.pp + "s", k.pp + "es"] : [k.pp + "e", k.pp + "s"]).map((f) => wickel(aux + " " + f)),
+        (etre ? [k.pp, endung(k.pp, "f"), endung(k.pp, "m", 1), endung(k.pp, "f", 1)] : [endung(k.pp, "f"), endung(k.pp, "m", 1)]).map((f) => wickel(aux + " " + f)),
         zeit === "pqp" ? [wickel(AUX[k.aux][p] + " " + pp)] : [k.refl ? reflPres(k, p) : k.pres[p]],
         k.refl ? PRON.map((pr, i) => (i === p ? "" : pronVor(pr, aux + " " + pp))) : []
       ];
@@ -373,12 +377,18 @@
     };
   }
 
+  function partizipGrund(v, pp) {
+    if (v.typ === "er" && /é$/.test(pp)) return "Verben auf -er bilden das Partizip auf -é.";
+    if ((v.typ === "ir" || v.typ === "irk") && /i$/.test(pp)) return "Verben auf -ir bilden das Partizip meist auf -i.";
+    if (v.typ === "dre" && /u$/.test(pp)) return "Verben auf -dre bilden das Partizip auf -u.";
+    return "Dieses Partizip ist unregelmäßig, das lernt man auswendig.";
+  }
   function fragePartizip(v, n) {
     const k = konj(v);
     return {
       art: "partizip", v, zeit: "pc", schluessel: v.inf + "|pc", antwort: k.pp, voll: v.inf + " → " + k.pp,
       optionen: optionen(k.pp, falschePartizipien(v), n).map((o) => ({ text: o, wert: o })),
-      erklaerung: erklaere(v, "pc", k.pp)
+      erklaerung: partizipGrund(v, k.pp)
     };
   }
 
@@ -392,11 +402,61 @@
     };
   }
 
-  function frageLinie(v, linien) {
+  /* Angleichung des Partizips: Die Optionen sind immer die vier Formen desselben Partizips */
+  function angleichGrund(pp, g, pl) {
+    const art = (g === "f" ? "weiblich" : "männlich") + (pl ? " Plural" : " Singular");
+    if (g !== "f" && pl && /s$/.test(pp)) return `Hier ${art}, und das Partizip endet schon auf -s.`;
+    const rest = endung(pp, g, pl).slice(pp.length);
+    return `Hier ${art}, also ${rest ? "-" + rest : "keine Endung"}.`;
+  }
+  function angleichOptionen(pp) {
+    return Array.from(new Set([endung(pp, "m"), endung(pp, "f"), endung(pp, "m", 1), endung(pp, "f", 1)])).map((o) => ({ text: o, wert: o }));
+  }
+  function frageAngleichung(v) {
+    const k = konj(v), etre = k.aux === "être", s = eins(etre ? PC_ETRE : PC_AVOIR);
+    const aux = AUX[k.aux][s.p];
+    const antwort = etre ? endung(k.pp, s.g, s.pl) : k.pp;
+    const vor = mitSubj(s.t, k.refl ? pronVor(PRON[s.p], aux) : aux);
     return {
-      art: "linie", v, schluessel: v.inf + "|typ", antwort: v.typ, voll: v.inf + ": " + LINIEN[v.typ].name,
-      optionen: linien.map((l) => ({ text: LINIEN[l].name, wert: l, linie: l })),
-      erklaerung: erklaereLinie(v)
+      art: "accord", v, zeit: "pc", schluessel: v.inf + "|acc", antwort, vor, nach: "", hinweis: s.h || null,
+      voll: vor + " " + antwort, optionen: angleichOptionen(k.pp),
+      erklaerung: k.refl ? "Reflexive Verben fahren auf Gleis être: Das Partizip richtet sich nach dem Subjekt. " + angleichGrund(k.pp, s.g, s.pl)
+        : etre ? "Gleis être: Das Partizip richtet sich nach dem Subjekt. " + angleichGrund(k.pp, s.g, s.pl)
+        : "Gleis avoir: Das Partizip bleibt unverändert."
+    };
+  }
+  /* Sätze zur Angleichung bei avoir. davor: Das direkte Objekt steht vor dem Verb. */
+  const ANGLEICH_SAETZE = [
+    { vor: "Cette chanson ? Je l'ai", inf: "écouter", davor: 1, g: "f" },
+    { vor: "Les photos ? Je les ai", inf: "regarder", davor: 1, g: "f", pl: 1 },
+    { vor: "Ces livres ? Je les ai", inf: "lire", davor: 1, g: "m", pl: 1 },
+    { vor: "Ta sœur ? Je l'ai", nach: " hier", inf: "voir", davor: 1, g: "f" },
+    { vor: "Les clés ? Nous les avons", inf: "trouver", davor: 1, g: "f", pl: 1 },
+    { vor: "Mon sac ? Je l'ai", inf: "perdre", davor: 1, g: "m" },
+    { vor: "La lettre que j'ai", inf: "écrire", davor: 1, g: "f" },
+    { vor: "Les films que nous avons", inf: "voir", davor: 1, g: "m", pl: 1 },
+    { vor: "Les fleurs que Léa a", inf: "acheter", davor: 1, g: "f", pl: 1 },
+    { vor: "La robe que tu as", inf: "choisir", davor: 1, g: "f" },
+    { vor: "Les gâteaux qu'ils ont", inf: "faire", davor: 1, g: "m", pl: 1 },
+    { vor: "La voiture qu'il a", inf: "vendre", davor: 1, g: "f" },
+    { vor: "Les amies que j'ai", inf: "inviter", davor: 1, g: "f", pl: 1 },
+    { vor: "La décision qu'elle a", inf: "prendre", davor: 1, g: "f" },
+    { vor: "Les fenêtres que tu as", inf: "ouvrir", davor: 1, g: "f", pl: 1 },
+    { vor: "Les règles que vous avez", inf: "comprendre", davor: 1, g: "f", pl: 1 },
+    { vor: "Le train que nous avons", inf: "attendre", davor: 1, g: "m" },
+    { vor: "J'ai", nach: " la lettre", inf: "écrire" },
+    { vor: "Léa a", nach: " les fleurs", inf: "acheter" },
+    { vor: "Nous avons", nach: " les films", inf: "voir" },
+    { vor: "Elle a", nach: " la décision", inf: "prendre" },
+    { vor: "Tu as", nach: " les fenêtres", inf: "ouvrir" },
+    { vor: "Ils ont", nach: " la voiture", inf: "vendre" }
+  ];
+  function frageObjektSatz(s, v) {
+    const k = konj(v), antwort = s.davor ? endung(k.pp, s.g, s.pl) : k.pp, nach = s.nach || "";
+    return {
+      art: "accord", v, zeit: "pc", schluessel: v.inf + "|acc", antwort, vor: s.vor, nach, hinweis: null,
+      voll: s.vor + " " + antwort + nach, optionen: angleichOptionen(k.pp),
+      erklaerung: s.davor ? "Das direkte Objekt steht vor dem Verb: Das Partizip richtet sich danach. " + angleichGrund(k.pp, s.g, s.pl) : "Das direkte Objekt steht hinter dem Verb: Das Partizip bleibt unverändert."
     };
   }
 
@@ -445,14 +505,6 @@
     return "Endungen: -e, -es, -e, -ons, -ez, -ent.";
   }
 
-  function erklaereLinie(v) {
-    if (v.typ === "irr" && /dre$/.test(v.inf)) return "Sieht aus wie -dre, aber im Plural ändert sich der Stamm.";
-    if (v.typ === "irr") return "Eigene Formen, die man auswendig lernt.";
-    if (v.typ === "irk") return "Endet auf -ir, aber im Plural ohne -iss-: nous " + konj(v).pres[3] + ".";
-    if (v.typ === "ir") return "Im Plural kommt -iss- dazu: nous " + konj(v).pres[3] + ".";
-    return "Folgt dem Muster von " + LINIEN[v.typ].beispiel + ".";
-  }
-
   /* Lernstand: Kästchen 0 bis 5 je Verb und Zeit. Was wackelt, kommt öfter dran. */
   const GEWICHT = [10, 7, 5, 3, 2, 1];
   const NEU = 8;
@@ -490,7 +542,7 @@
   root.Engine = {
     LINIEN, LINIEN_FOLGE, ZEITEN, PERSONEN, AUX, END,
     konj, tabelle, mitSubj, misch, eins, setZufall, uebbar, istRefl, nurDritte, grundInf, reflPres, PRON,
-    frageForm, fragePartizip, frageHilfsverb, frageLinie, frageBedeutung,
+    frageForm, fragePartizip, frageHilfsverb, frageAngleichung, frageObjektSatz, ANGLEICH_SAETZE, frageBedeutung,
     waehle, buche, stufe, zeitenVon, auchRichtig
   };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -1,11 +1,11 @@
-/* Métroverbe: gedruckter Netzplan auf weißem Papier, immer hell. Farbe kommt nur von den Linien, alles andere ist Papier, Tinte und Anzeigetafel. */
+/* Métroverbe: gedruckter Netzplan auf weißem Papier, immer hell. Farbe kommt nur von den Linien, alles andere ist Papier und Tinte. Dunkle Flächen gibt es nur bei Knöpfen. */
 :root {
   --bg: #ffffff; --flaeche: #ffffff; --flaeche2: #eeeeea; --tinte: #18212e; --leise: #5c6470; --rand: #dad6ca;
   --er: #00875a; --ir: #f5b800; --irk: #e8590c; --dre: #7b3fd1; --irr: #e0144c;
   --auf-er: #ffffff; --auf-ir: #18212e; --auf-irk: #18212e; --auf-dre: #ffffff; --auf-irr: #ffffff;
   --gut: #00794f; --gut-bg: #d6f2e5; --schlecht: #c21240; --schlecht-bg: #fbdfe6;
   --akzent: #18212e; --auf-akzent: #ffffff;
-  --tafel: #18212e; --auf-tafel: #ffffff; --tafel-leise: #b6bfcc; --signal: #ffc83d;
+  --signal: #ffc83d; --signal-bg: #fff4d1; --blau: #1459d9; --blau-bg: #e4edfd;
   color-scheme: light;
   --schrift: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
   --titel: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
@@ -46,6 +46,11 @@ p { margin: 0; }
   flex: none; min-width: 48px; height: 40px; padding: 0 8px; border-radius: 10px; background: var(--l); color: var(--auf);
   display: grid; place-items: center; font: 700 22px/1 var(--titel);
 }
+.rund { position: relative; }
+.unter {
+  position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%); padding: 0 5px; border-radius: 5px; border: 1.5px solid var(--l);
+  background: var(--flaeche); color: var(--tinte); font: 700 11.5px/13px var(--schrift); font-style: normal; letter-spacing: 0;
+}
 .rund.mini { min-width: 36px; height: 26px; padding: 0 6px; border-radius: 7px; font-size: 16px; }
 
 /* Name: fünf Linien unter dem Schriftzug */
@@ -71,12 +76,18 @@ p { margin: 0; }
 .zahlen div { display: flex; flex-direction: column; }
 .zahlen b { font: 700 26px/1 var(--titel); font-variant-numeric: tabular-nums; }
 .zahlen span { font-size: 13px; color: var(--leise); }
-.los { background: var(--tafel); color: var(--auf-tafel); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
-.los h2 { font-size: 32px; color: var(--signal); }
+.los { background: var(--signal-bg); color: var(--tinte); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.los h2 { font-size: 32px; }
 .los .reihe button { flex: 1 1 130px; min-height: 54px; border-radius: 10px; font-weight: 700; background: var(--signal); color: #18212e; }
 .los .reihe button + button { background: #ffffff; }
 
 /* Netzplan */
+.blau-knopf { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 2px 12px; width: 100%; min-height: 58px; padding: 10px 18px; border-radius: 14px; background: var(--blau-bg); color: var(--blau); text-align: left; }
+.blau-knopf b { font: 700 26px/1.05 var(--titel); }
+.blau-knopf span { font-size: 15px; color: var(--tinte); }
+.suche input { width: 100%; min-height: 50px; padding: 0 14px; font: inherit; color: var(--tinte); background: var(--flaeche); border: 2px solid var(--tinte); border-radius: 10px; }
+.suche input::placeholder { color: var(--leise); }
+.fahrplan-inhalt { display: flex; flex-direction: column; gap: 22px; }
 .plan { background: var(--flaeche); border: 1px solid var(--rand); border-radius: 14px; padding: 10px 6px; }
 .plansvg { display: block; width: 100%; max-width: 460px; margin: 0 auto; height: auto; }
 .plansvg [data-a] { cursor: pointer; }
@@ -85,20 +96,20 @@ p { margin: 0; }
 .pl-voll { fill: var(--tinte); }
 .pl-marke { fill: var(--l); }
 .pl-kurz { font: 700 21px/1 var(--titel); fill: var(--auf); text-anchor: middle; }
+.pl-unter { fill: var(--flaeche); stroke: var(--l); stroke-width: 2.5; }
+.pl-unter-text { font: 700 13px/1 var(--schrift); fill: var(--tinte); text-anchor: middle; }
 .pl-ende { fill: var(--flaeche); stroke: var(--l); stroke-width: 5; }
 .pl-ende.voll { fill: var(--l); stroke: var(--tinte); }
 .pl-zahl { font: 700 14px/1 var(--titel); fill: var(--leise); text-anchor: middle; font-variant-numeric: tabular-nums; }
 .pl-bhf { fill: var(--flaeche); stroke: var(--tinte); stroke-width: 3.5; }
 .pl-halt.zusatz .pl-bhf { stroke-dasharray: 9 6; }
-.pl-halt.modus .pl-bhf { fill: var(--tafel); stroke-dasharray: none; }
-.pl-bhf-rand { fill: none; stroke: #ffffff; stroke-width: 1.8; stroke-dasharray: 7 5; }
+.pl-halt.modus .pl-bhf { fill: var(--signal-bg); }
 .pl-bhf-name { font: 700 23px/1 var(--titel); fill: var(--tinte); text-anchor: middle; }
 .pl-gleise { font: 700 13.5px/1 var(--schrift); fill: var(--leise); text-anchor: middle; }
-.pl-halt.modus .pl-bhf-name { fill: #ffffff; }
 .legende { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px 18px; padding: 6px 0 4px; font-size: 15px; color: var(--leise); }
 .legende span { display: inline-flex; align-items: center; gap: 7px; }
 .lg { width: 30px; height: 16px; border-radius: 8px; background: var(--flaeche); border: 2.5px solid var(--tinte); }
-.lg.modus { background: var(--tafel); }
+.lg.modus { background: var(--signal-bg); }
 .lg.zusatz { border-style: dashed; }
 
 /* Fahrkarte */
@@ -117,24 +128,39 @@ p { margin: 0; }
 .stempel { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .stempel .rund { min-width: 0; padding: 0; width: 58px; height: 58px; border-radius: 50%; background: none; color: var(--rand); border: 3px dashed var(--rand); }
 .stempel.voll .rund { color: var(--l); border: 4px double var(--l); transform: rotate(-11deg); }
+.stempel .unter { bottom: -5px; }
 .stempel small { color: var(--leise); font-size: 14px; font-variant-numeric: tabular-nums; }
 
 /* Stationsschild */
 .schild {
-  display: flex; align-items: center; gap: 14px; background: var(--tafel); color: var(--auf-tafel); padding: 14px 16px 16px;
+  display: flex; align-items: center; gap: 14px; background: var(--flaeche); color: var(--tinte); padding: 14px 16px 16px; border: 2px solid var(--rand); border-bottom-width: 0;
   border-radius: 12px; border-bottom: 7px solid var(--l);
 }
 .schild.bhf { --l: var(--signal); }
 .schild h1 { font-size: 40px; overflow-wrap: anywhere; }
-.schild p { color: var(--tafel-leise); }
+.schild p { color: var(--leise); }
 
 /* Fahrten */
 .spiele { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
 .spiel {
-  display: flex; flex-direction: column; gap: 6px; text-align: left; background: var(--flaeche);
-  padding: 14px; border-radius: 12px; border: 1px solid var(--rand);
+  display: flex; flex-direction: column; text-align: left; background: var(--flaeche);
+  padding: 0; overflow: hidden; border-radius: 12px; border: 1px solid var(--rand);
 }
 .spiel:not(:disabled):hover { border-color: var(--tinte); }
+.streckenbild { display: block; width: 100%; height: auto; background: var(--flaeche2); fill: none; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+.spiel.blau .streckenbild { background: var(--blau-bg); }
+.spiel-text { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px 14px; }
+.spiel.blau { cursor: default; }
+.spiel.blau .reihe { margin-top: 8px; }
+.spiel.blau .reihe button { flex: 1 1 120px; min-height: 48px; border-radius: 10px; font-weight: 700; background: var(--blau); color: #ffffff; }
+.spiel.blau .reihe button + button { background: var(--flaeche); color: var(--blau); border: 2px solid var(--blau); }
+.spiel.blau h3 { color: var(--blau); }
+.sb-hub { fill: #ffffff; stroke: var(--tinte); stroke-width: 3; }
+.sb-punkt { fill: #ffffff; stroke: none; }
+.sb-ende { fill: #ffffff; stroke-width: 5; }
+.sb-welle { stroke: var(--tinte); stroke-width: 2.5; opacity: .55; }
+.sb-frage { fill: #ffffff; stroke: var(--blau); stroke-width: 4; }
+.sb-zeichen { font: 700 26px/1 var(--titel); fill: var(--blau); stroke: none; text-anchor: middle; }
 .spiel:disabled { opacity: .6; cursor: not-allowed; }
 .spiel .probe { font: 700 16px/1 var(--titel); letter-spacing: .03em; color: var(--leise); }
 .spiel h3 { font-size: 27px; }
@@ -234,20 +260,20 @@ select { font: inherit; min-height: 48px; padding: 0 10px; border-radius: 8px; b
 .stand { font: 700 24px/1 var(--titel); min-width: 44px; text-align: right; font-variant-numeric: tabular-nums; }
 .combo { font-size: 14px; font-weight: 700; color: var(--gut); min-height: 20px; text-align: right; }
 
-/* Die Frage steht auf der Anzeigetafel */
+/* Die Frage steht auf einem hellen Schild, unten läuft die Farbe der Linie */
 .frage {
   position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px;
-  padding: 18px 14px 20px; background: var(--tafel); color: var(--auf-tafel); border-radius: 14px; border-bottom: 7px solid var(--l, var(--signal));
+  padding: 18px 14px 20px; background: var(--flaeche); color: var(--tinte); border-radius: 14px; border: 2px solid var(--rand); border-bottom: 7px solid var(--l, var(--signal));
 }
 .frage .rund { position: absolute; left: 12px; top: 12px; }
-.frage .kicker { color: var(--signal); padding-inline: 44px; }
+.frage .kicker { color: var(--leise); padding-inline: 44px; }
 .ergebnis .kicker { color: var(--leise); letter-spacing: .08em; text-transform: uppercase; }
 .kicker { font-weight: 700; font-size: 15px; display: inline-flex; gap: 8px; align-items: center; }
 .satz { font: 700 44px/1.1 var(--titel); overflow-wrap: anywhere; }
-.satz .luecke { color: var(--signal); }
-.satz .luecke.leer { border-bottom: 4px solid var(--signal); padding-inline: 34px; }
-.inf { font-size: 19px; color: var(--tafel-leise); }
-.inf b { color: var(--auf-tafel); }
+.satz .luecke { color: var(--gut); }
+.satz .luecke.leer { border-bottom: 4px solid var(--l, var(--tinte)); padding-inline: 34px; }
+.inf { font-size: 19px; color: var(--leise); }
+.inf b { color: var(--tinte); }
 
 .optionen { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .optionen.breit { grid-template-columns: 1fr; }
@@ -266,6 +292,9 @@ select { font: inherit; min-height: 48px; padding: 0 10px; border-radius: 8px; b
 .rueck.gut { background: var(--gut-bg); }
 .rueck.schlecht { background: var(--schlecht-bg); }
 .rueck b { font-size: 19px; }
+.rueck-kopf { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.hilfe { flex: none; width: 44px; height: 44px; margin: -6px -6px -6px 0; border-radius: 50%; display: grid; place-items: center; font: 700 22px/1 var(--titel); background: var(--flaeche); border: 2px solid var(--schlecht); color: var(--schlecht); }
+.hilfe[aria-expanded="true"] { background: var(--schlecht); color: #ffffff; }
 .weiter { width: 100%; }
 
 @keyframes wackel { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
@@ -289,16 +318,6 @@ select { font: inherit; min-height: 48px; padding: 0 10px; border-radius: 8px; b
 .blase { min-height: 54px; padding: 0 16px; border-radius: 27px; background: var(--flaeche); border: 2px solid var(--rand); font-weight: 700; font-size: 19px; }
 .blase:disabled { visibility: hidden; }
 
-/* Fundbüro: Fahrkarten aufdecken */
-.karten { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-@media (min-width: 560px) { .karten { grid-template-columns: repeat(4, 1fr); } }
-.karte {
-  position: relative; min-height: 84px; border-radius: 10px; padding: 6px; font-weight: 700; font-size: 16px; line-height: 1.2; overflow-wrap: anywhere;
-  background: var(--tafel); color: var(--auf-tafel);
-}
-.karte:not(.offen):not(.weg)::before { content: ""; position: absolute; inset: 7px; border: 2px dashed var(--signal); border-radius: 6px; opacity: .55; }
-.karte.offen { background: var(--flaeche); color: var(--tinte); border: 2px solid var(--tinte); }
-.karte.weg { background: var(--gut-bg); color: var(--gut); border: 2px solid var(--gut); }
 
 /* Terminus */
 .ergebnis { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding-block: 18px; }

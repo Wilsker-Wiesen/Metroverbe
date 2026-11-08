@@ -15,12 +15,12 @@
   /* Jedes Spiel ist eine Fahrt: Jede Frage ist eine Station */
   const SPIELE = [
     { id: "quiz", name: "Linienfahrt", probe: "nous ___ (finir)", text: "An jeder Station wartet eine Verbform. Wähle die richtige.", zeiten: true, opt: true, ziel: 15 },
-    { id: "partizip", name: "Endstation Partizip", probe: "prendre → ?", text: "Finde das richtige Participe passé.", opt: true, ziel: 15 },
+    { id: "partizip", name: "Endstation Partizip", probe: "prendre → ?", text: "Finde das richtige Participe passé.", textAngleich: "Finde das richtige Participe passé, auch mit Angleichung: partie oder parties?", opt: true, ziel: 15 },
     { id: "aux", name: "Welches Gleis?", probe: "partir: Gleis être", text: "Fährt das Verb im Passé composé auf Gleis avoir oder auf Gleis être?", ziel: 15 },
     { id: "reihe", name: "Strecke bauen", probe: "je, tu, il, nous …", text: "Tippe die Formen in der richtigen Reihenfolge an, Station für Station.", zeiten: true, ziel: 5 },
-    { id: "linie", name: "Welche Linie?", probe: "choisir: Linie -iss", text: "Auf welche Linie gehört dieses Verb?", ziel: 15 },
     { id: "bedeutung", name: "Durchsage", probe: "attendre = ?", text: "Was heißt das? Französisch und Deutsch zuordnen.", opt: true, ziel: 15 },
-    { id: "memory", name: "Fundbüro", probe: "lire = lesen", text: "Finde die Paare: Verb und Bedeutung oder Partizip.", memory: true, ziel: 1 }
+    /* Ohne Einstellungsseite: Sie steht als eigener Block über den anderen Fahrten */
+    { id: "blau", name: "Fahrt ins Blaue", frei: true, text: "Zufälliges Verb, zufällige Form, quer durch alles, was ihr schon hattet.", opt: true, ziel: 15 }
   ];
   /* Die Bahnhöfe des Netzes: jede Zeit und jeder Modus. Reihenfolge wie in Engine.ZEITEN */
   const BAHNHOEFE = {
@@ -59,7 +59,7 @@
     return {
       stats: {}, km: 0, serie: 0, letzter: null, rekord: {},
       stand: { an: {}, band: null, lektion: null, umfang: 2 },
-      setup: { uhr: false, zeiten: ["pres"], linien: FOLGE.slice(), n: 4, memory: "de" }
+      setup: { uhr: false, zeiten: ["pres"], linien: FOLGE.slice(), n: 4 }
     };
   }
   function laden() {
@@ -79,7 +79,7 @@
 
   let S = laden();
   const TABS = { netz: "Netzplan", fahrten: "Fahrten", fahrplan: "Fahrplan", fahrkarte: "Fahrkarte" };
-  const a = { neu: { jahr: null, unite: null }, einzeln: false, tab: "netz", setup: null, linie: null, verb: null, bahnhof: null, decke: false, offen: new Set(), filter: "alle", gross: false, spalten: new Set(), bestaetige: false };
+  const a = { neu: { jahr: null, unite: null }, einzeln: false, tab: "netz", setup: null, linie: null, verb: null, bahnhof: null, suche: "", decke: false, offen: new Set(), filter: "alle", gross: false, spalten: new Set(), bestaetige: false };
   let spiel = null, uhr = null, wartet = null;
 
   const h = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -147,7 +147,8 @@
     a.filter = "alle";
     sichern();
   }
-  const memoryArt = () => (S.setup.memory === "pp" && themaDa("passe_compose_avoir") ? "pp" : "de");
+  /* Beim Spieltext zählt, ob die Angleichung schon dran war */
+  const spielText = (g) => (g.textAngleich && themaDa("passe_compose_etre") ? g.textAngleich : g.text);
   const aktive = () => VERBEN.filter(aktiv);
   function heute(d) { const x = d || new Date(); return x.getFullYear() + "-" + (x.getMonth() + 1) + "-" + x.getDate(); }
   function serieZaehlen() {
@@ -205,6 +206,8 @@
     return `<nav class="tabs">${Object.entries(TABS).map(([k, t]) =>
       `<button data-a="tab" data-w="${k}" ${a.tab === k && !a.linie && !a.verb && !a.setup && !a.bahnhof ? 'aria-current="page"' : ""}>${t}</button>`).join("")}</nav>`;
   }
+  /* Die Linienmarke. -ir mit -iss- trägt unter der Marke ein kleines Zusatzschild. */
+  const marke = (l, klein) => `<span class="rund${klein ? " mini" : ""}">${h(L[l].kurz)}${L[l].unter ? `<i class="unter">${h(L[l].unter)}</i>` : ""}</span>`;
   const sitzt = () => aktive().filter((v) => fortschritt(v) === 3).length;
 
   /* Der Netzplan: Die Linie sagt, welche Verben, der Bahnhof, welche Zeit. Jede Linie fährt durch jeden Bahnhof. */
@@ -257,6 +260,7 @@
         ${punkte.join("")}
         <rect x="${xw - 24}" y="8" width="48" height="32" rx="9" class="pl-marke"/>
         <text x="${xw}" y="31" class="pl-kurz">${h(L[l].kurz)}</text>
+        ${L[l].unter ? `<rect x="${xw - 16}" y="35" width="32" height="18" rx="6" class="pl-unter"/><text x="${xw}" y="48.5" class="pl-unter-text">${h(L[l].unter)}</text>` : ""}
         <circle cx="${xw}" cy="${ende}" r="9" class="${fertig ? "pl-ende voll" : "pl-ende"}"/>
         <text x="${xw}" y="${ende + 27}" class="pl-zahl">${gut}/${vs.length}</text>
       </g>`;
@@ -267,7 +271,6 @@
       return `<g class="pl-halt${art}" data-a="bahnhof" data-w="${b.z}" role="button" tabindex="0" aria-label="Bahnhof ${h(E.ZEITEN[b.z])}, ${BAHNHOEFE[b.z].art}${b.zusatz ? ", Zusatz" : ""}">
         <rect x="0" y="${oben - LUECKE / 2}" width="360" height="${b.h + LUECKE}" fill="transparent"/>
         <rect x="${MITTE - BREIT}" y="${oben}" width="${BREIT * 2}" height="${b.h}" rx="20" class="pl-bhf"/>
-        ${b.modus && b.zusatz ? `<rect x="${MITTE - BREIT + 4}" y="${oben + 4}" width="${BREIT * 2 - 8}" height="${b.h - 8}" rx="16" class="pl-bhf-rand"/>` : ""}
         <text x="${MITTE}" y="${b.y + (b.gleise.length ? -3 : 7.5)}" class="pl-bhf-name">${h(E.ZEITEN[b.z])}</text>
         ${b.gleise.length ? `<text x="${MITTE}" y="${b.y + 17}" class="pl-gleise">${b.gleise.map((g) => "Gleis " + g).join(" · ")}</text>` : ""}
       </g>`;
@@ -304,17 +307,33 @@
           <button data-a="schnell" data-w="uhr">Express · 60 s</button>
         </div>
       </section>
+      <button class="blau-knopf" data-a="blau" data-w="ruhe"><b>Fahrt ins Blaue</b><span>Zufälliges Verb, zufällige Form</span></button>
       <section class="plan">${netzplan()}${legende()}</section>
       <p class="hinweis mitte">Tippe auf eine Linie oder einen Bahnhof.</p>`;
   }
+  /* Jede Fahrt hat ihr eigenes Streckenbild auf hellem Grund, in den Farben der Linien */
+  const bild = (innen) => `<svg class="streckenbild" viewBox="0 0 240 56" aria-hidden="true">${innen}</svg>`;
+  const STRECKENBILD = {
+    quiz: bild([["er", "M-6 42 H34 L46 28"], ["ir", "M46 28 L58 14 H92 L104 28"], ["irr", "M104 28 L116 42 H144 L154 28"], ["irk", "M154 28 L164 14 H192 L202 28"], ["dre", "M202 28 L212 42 H246"]].map(([l, d]) => `<path d="${d}" stroke="var(--${l})"/>`).join("") + [46, 104, 154, 202].map((x) => `<circle cx="${x}" cy="28" r="7" class="sb-hub"/>`).join("")),
+    partizip: bild(`<path d="M-6 28 H200" stroke="var(--irk)"/>${[36, 88, 140].map((x) => `<circle cx="${x}" cy="28" r="4" class="sb-punkt"/>`).join("")}<circle cx="208" cy="28" r="12" class="sb-ende" stroke="var(--irk)"/>`),
+    aux: bild(`<path d="M86 28 L110 11 H246" stroke="var(--er)"/><path d="M86 28 L110 45 H246" stroke="var(--dre)"/><path d="M-6 28 H86" stroke="var(--tinte)"/><circle cx="86" cy="28" r="9" class="sb-hub"/>`),
+    reihe: bild(`<path d="M-6 28 H246" stroke="var(--ir)"/>${[30, 66, 102, 138, 174, 210].map((x, i) => `<circle cx="${x}" cy="28" r="8" class="${i < 3 ? "sb-hub" : "sb-ende"}" stroke="var(--ir)"/>`).join("")}`),
+    bedeutung: bild(`<path d="M-6 28 H246" stroke="var(--irr)"/><circle cx="120" cy="28" r="10" class="sb-hub"/>${[17, 30, 43].map((r) => `<path d="M${120 - r} ${28 - r * 0.6} Q${120 - r * 1.3} 28 ${120 - r} ${28 + r * 0.6} M${120 + r} ${28 - r * 0.6} Q${120 + r * 1.3} 28 ${120 + r} ${28 + r * 0.6}" class="sb-welle"/>`).join("")}`),
+    blau: bild(`<path d="M-6 28 H246" stroke="var(--blau)" stroke-dasharray="13 10"/><circle cx="120" cy="28" r="17" class="sb-frage"/><text x="120" y="37" class="sb-zeichen">?</text>`)
+  };
   function seiteFahrten() {
     return `
       <header class="spalte"><h1>Fahrten</h1>
       <p class="leise">Jede Frage ist eine Station. In Ruhe oder als Express in 60 Sekunden.</p></header>
-      <div class="spiele">${SPIELE.map((s) => { const spt = spaeter(s); return `
-        <button class="spiel" data-a="setup" data-w="${s.id}" ${spt ? "disabled" : ""}>
-          <span class="probe">${h(s.probe)}</span><h3>${h(s.name)}</h3><p>${h(spt || s.text)}</p>
-        </button>`; }).join("")}</div>`;
+      <div class="spiele">
+        <section class="spiel blau">${STRECKENBILD.blau}<div class="spiel-text">
+          <h3>Fahrt ins Blaue</h3><p>Nichts einstellen: zufälliges Verb, zufällige Form, quer durch alles, was ihr schon hattet.</p>
+          <div class="reihe"><button data-a="blau" data-w="ruhe">In Ruhe</button><button data-a="blau" data-w="uhr">Express · 60 s</button></div>
+        </div></section>
+        ${SPIELE.filter((s) => !s.frei).map((s) => { const spt = spaeter(s); return `
+        <button class="spiel" data-a="setup" data-w="${s.id}" ${spt ? "disabled" : ""}>${STRECKENBILD[s.id]}<div class="spiel-text">
+          <span class="probe">${h(s.probe)}</span><h3>${h(s.name)}</h3><p>${h(spt || spielText(s))}</p>
+        </div></button>`; }).join("")}</div>`;
   }
   function seiteLinie() {
     const l = a.linie, t = LINIEN_TEXT[l], vs = VERBEN.filter((v) => v.typ === l && aktiv(v));
@@ -326,20 +345,68 @@
     }
     return `
       <button class="zurueck" data-a="zurueck">← Zurück</button>
-      <header class="schild" data-l="${l}"><span class="rund">${h(L[l].kurz)}</span><div><h1>${h(L[l].name)}</h1></div></header>
+      <header class="schild" data-l="${l}">${marke(l)}<div><h1>${h(L[l].name)}</h1></div></header>
       <p>${h(t.text)}</p>
       ${tabelle}
       <p class="merke">${h(t.extra)}</p>
       <button class="knopf" data-a="linieSpielen" data-w="${l}">Diese Linie fahren</button>
       <section class="spalte"><h2>Stationen</h2>${verbliste(vs, true)}</section>`;
   }
-  function verbliste(vs, schiene) {
+  function verbliste(vs, schiene, text) {
     return `<div class="verbliste${schiene ? " schiene" : ""}">${vs.map((v) => `
       <button class="verbzeile" data-a="verb" data-w="${h(v.inf)}" data-l="${v.typ}">
-        <i class="punkt s${fortschritt(v)}"></i><b>${h(v.inf)}</b><span class="de">${h(v.de)}</span>
+        <i class="punkt s${fortschritt(v)}"></i><b>${h(v.inf)}</b><span class="de">${h(text ? text(v) : v.de)}</span>
       </button>`).join("")}</div>`;
   }
+  /* Wortsuche: findet Infinitiv, deutsche Bedeutung und einfache Verbformen. Akzente sind egal. */
+  const ohneAkzent = (t) => String(t).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  let formenSpeicher = { stand: null, liste: [] };
+  function bekannteFormen() {
+    if (formenSpeicher.stand === jetzt()) return formenSpeicher.liste;
+    const liste = VERBEN.filter(bisStand).map((v) => {
+      const k = E.konj(v), formen = new Map(), zeiten = zeitenFuer(v);
+      const dazu = (f) => { if (f) { const w = f.trim().split(/[\s']+/).pop(); formen.set(ohneAkzent(w), w); } };
+      ["pres", "imp", "impf", "fs", "cond", "subj"].filter((z) => zeiten.includes(z) && k[z]).forEach((z) => k[z].forEach(dazu));
+      if (zeiten.includes("pc")) dazu(k.pp);
+      return { v, formen };
+    });
+    formenSpeicher = { stand: jetzt(), liste };
+    return liste;
+  }
+  function treffer(roh) {
+    const q = ohneAkzent(roh.trim());
+    if (!q) return [];
+    const lang = q.length >= 2;
+    return bekannteFormen().map(({ v, formen }) => {
+      const inf = ohneAkzent(v.inf), kern = inf.replace(/^(se |s')/, ""), de = ohneAkzent(v.de);
+      const rang = inf === q || kern === q ? 0
+        : lang && formen.has(q) ? 1
+        : kern.startsWith(q) ? 2
+        : de.split(/[^a-zß]+/).some((w) => w.startsWith(q)) ? 3
+        : lang && inf.includes(q) ? 4
+        : lang && de.includes(q) ? 5 : -1;
+      return { v, rang, form: rang === 1 ? formen.get(q) : null };
+    }).filter((t) => t.rang >= 0)
+      .sort((x, y) => x.rang - y.rang || (x.v.prio || 1) - (y.v.prio || 1) || x.v.inf.localeCompare(y.v.inf, "fr"))
+      .slice(0, 30);
+  }
+  function suchInhalt() {
+    const liste = treffer(a.suche);
+    if (!liste.length) return `<p class="hinweis">Nichts gefunden. Vielleicht kommt dieses Verb erst später.</p>`;
+    const zu = new Map(liste.map((t) => [t.v.inf, t]));
+    return verbliste(liste.map((t) => t.v), false, (v) => (zu.get(v.inf).form ? `Form: ${zu.get(v.inf).form} · ${v.de}` : v.de));
+  }
   function seiteFahrplan() {
+    return `
+      <header class="spalte"><h1>Fahrplan</h1>
+      <p class="leise">Schau nach oder decke Formen ab und frag dich selbst.</p></header>
+      <div class="suche"><label for="suche" hidden>Verb suchen</label>
+        <input id="suche" data-i="suche" type="search" value="${h(a.suche)}" placeholder="Verb oder Form suchen" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search"></div>
+      <div id="fahrplanInhalt" class="fahrplan-inhalt">${fahrplanInhalt()}</div>`;
+  }
+  /* Eigener Teil der Seite: Beim Tippen wird nur er neu gezeichnet, damit das Suchfeld den Fokus behält */
+  function fahrplanInhalt() {
+    if (a.suche.trim()) return suchInhalt();
     const vs = aktive().filter((v) => a.filter === "alle" || v.typ === a.filter);
     const filter = `<div class="chips">
       <button class="chip" data-a="filter" data-w="alle" aria-pressed="${a.filter === "alle"}">Alle</button>
@@ -350,8 +417,6 @@
       <button class="chip" data-a="gross" data-w="1" aria-pressed="${a.gross}">Große Tafel</button>
     </div>`;
     return `
-      <header class="spalte"><h1>Fahrplan</h1>
-      <p class="leise">Schau nach oder decke Formen ab und frag dich selbst.</p></header>
       <div class="spalte">${art}${filter}</div>
       <button class="knopf zwei" data-a="zufall" ${vs.length ? "" : "disabled"}>Zufällige Station abfragen</button>
       ${a.gross ? grosseTabelle(vs) : verbliste(vs)}`;
@@ -376,7 +441,7 @@
   function formVon(v, z) { return E.tabelle(v)[z][0].voll; }
   const reiheHilfsverb = (inf, z) => E.tabelle(finde(inf))[z].map((r) => r.voll.replace("il/elle/on", "il").replace("ils/elles", "ils")).join(", ");
   const beispielZeile = (v, z) => `<button class="verbzeile bsp" data-a="verb" data-w="${h(v.inf)}" data-l="${v.typ}">
-    <span class="rund mini">${h(L[v.typ].kurz)}</span><b>${h(formVon(v, z))}</b><span class="de">${h(v.inf)}</span></button>`;
+    ${marke(v.typ, true)}<b>${h(formVon(v, z))}</b><span class="de">${h(v.inf)}</span></button>`;
   function fahrbar(z) { return aktive().filter((v) => E.uebbar(v) && zeitenFuer(v).includes(z)); }
   function beispiele(z) {
     const da = fahrbar(z);
@@ -400,7 +465,7 @@
   }
   function gleisBlock(z, gleis) {
     const refl = themaDa("passe_compose_reflexiv");
-    const text = gleis === "avoir" ? "Die meisten Verben." : `Verben der Bewegung und des Zustandswechsels${refl ? " und alle reflexiven Verben" : ""}. Das Partizip richtet sich nach dem Subjekt.`;
+    const text = gleis === "avoir" ? `Die meisten Verben. Das Partizip bleibt unverändert${themaDa("accord_avoir") ? ", außer ein direktes Objekt steht davor: la lettre que j'ai écrite" : ""}.` : `Verben der Bewegung und des Zustandswechsels${refl ? " und alle reflexiven Verben" : ""}. Das Partizip richtet sich nach dem Subjekt.`;
     return `<section class="gleis-block"><h3><span class="gleis-nr">Gleis</span> ${gleis}</h3><p>${h(text)}</p>
       <p class="leise klein">${h(reiheHilfsverb(gleis, z === "pc" ? "pres" : "impf"))}</p>
       <div class="verbliste">${gleisBeispiele(z, gleis).map((v) => beispielZeile(v, z)).join("")}</div></section>`;
@@ -423,7 +488,7 @@
       </section>
       ${b.bauteil ? `<section class="spalte"><h2>Das brauchst du dafür</h2><p>${h(reiheHilfsverb(b.bauteil, "pres"))}</p></section>` : ""}
       ${gleise.length
-        ? gleise.map((g) => gleisBlock(z, g)).join("") + (z === "pc" && gleise.length > 1 ? `<button class="knopf zwei" data-a="setup" data-w="aux">Welches Gleis? üben</button>` : "")
+        ? gleise.map((g) => gleisBlock(z, g)).join("") + (z === "pc" && gleise.length > 1 ? `<div class="knoepfe"><button class="knopf zwei" data-a="setup" data-w="aux">Welches Gleis? üben</button><button class="knopf zwei" data-a="setup" data-w="partizip">Endstation Partizip</button></div>` : "")
         : `<section class="spalte"><h2>Beispiele</h2><div class="verbliste">${beispiele(z).map((v) => beispielZeile(v, z)).join("")}</div></section>`}`;
   }
   function seiteVerb() {
@@ -441,7 +506,7 @@
     };
     return `
       <button class="zurueck" data-a="zurueck">← Zurück</button>
-      <header class="schild" data-l="${v.typ}"><span class="rund">${h(L[v.typ].kurz)}</span><div><h1>${h(v.inf)}</h1><p>${h(v.de)}</p></div></header>
+      <header class="schild" data-l="${v.typ}">${marke(v.typ)}<div><h1>${h(v.inf)}</h1><p>${h(v.de)}</p></div></header>
       <p class="leise klein">${h(L[v.typ].name)}${zeiten.includes("pc") ? ` · Passé composé mit ${h(k.aux)}` : ""}</p>
       ${hilfs ? `<p class="merke">${h(hilfs.satz)}</p>` : ""}
       <div class="chips">
@@ -461,14 +526,14 @@
     const gueltig = `${S.stand.band}. Lernjahr${S.stand.lektion ? `, Unité ${S.stand.lektion} von ${zahl}` : ""}`;
     const stempel = linienDa().map((l) => {
       const vs = aktive().filter((v) => v.typ === l), gut = vs.filter((v) => fortschritt(v) === 3).length;
-      return `<div class="stempel${vs.length && gut === vs.length ? " voll" : ""}" data-l="${l}"><span class="rund">${h(L[l].kurz)}</span><small>${gut}/${vs.length}</small></div>`;
+      return `<div class="stempel${vs.length && gut === vs.length ? " voll" : ""}" data-l="${l}">${marke(l)}<small>${gut}/${vs.length}</small></div>`;
     }).join("");
     const einzeln = FOLGE.map((l) => {
       const vs = bisher.filter((v) => v.typ === l);
       if (!vs.length) return "";
       const an = vs.filter(aktiv).length;
       return `<section class="spalte" data-l="${l}">
-        <div class="zwischen"><div class="linie-kopf"><span class="rund mini">${h(L[l].kurz)}</span><h3>${h(L[l].name)}</h3></div>
+        <div class="zwischen"><div class="linie-kopf">${marke(l, true)}<h3>${h(L[l].name)}</h3></div>
         <button class="chip" data-a="alleLinie" data-w="${l}">${an === vs.length ? "Keine" : "Alle"}</button></div>
         <div class="waehl">${vs.map((v) => `<button class="chip" data-l="${l}" data-a="waehl" data-w="${h(v.inf)}" aria-pressed="${aktiv(v)}">${h(v.inf)}</button>`).join("")}</div>
       </section>`;
@@ -505,7 +570,7 @@
     const genug = pool.length >= minimum(g);
     return `<main class="seite">
       <button class="zurueck" data-a="zurueck">← Zurück</button>
-      <header class="spalte"><h1>${h(g.name)}</h1><p>${h(g.text)}</p>${rek ? `<p class="leise klein">Dein Express-Rekord: ${rek} Punkte</p>` : ""}</header>
+      <header class="spalte"><h1>${h(g.name)}</h1><p>${h(spielText(g))}</p>${rek ? `<p class="leise klein">Dein Express-Rekord: ${rek} Punkte</p>` : ""}</header>
       <div class="feld"><span class="lbl">Tempo</span><div class="chips">
         <button class="chip" data-a="uhr" data-w="0" aria-pressed="${!s.uhr}">In Ruhe</button>
         <button class="chip" data-a="uhr" data-w="1" aria-pressed="${s.uhr}">Express · 60 s</button>
@@ -517,9 +582,6 @@
         `<button class="chip" data-l="${l}" data-a="lin" data-w="${l}" aria-pressed="${s.linien.includes(l)}">${h(L[l].name)}</button>`).join("")}</div></div>
       ${g.opt ? `<div class="feld"><span class="lbl">Antwortmöglichkeiten</span><div class="chips">${[4, 5, 6].map((n) =>
         `<button class="chip" data-a="n" data-w="${n}" aria-pressed="${s.n === n}">${n}</button>`).join("")}</div></div>` : ""}
-      ${g.memory && themaDa("passe_compose_avoir") ? `<div class="feld"><span class="lbl">Paare</span><div class="chips">
-        <button class="chip" data-a="mem" data-w="de" aria-pressed="${memoryArt() === "de"}">Verb und Bedeutung</button>
-        <button class="chip" data-a="mem" data-w="pp" aria-pressed="${memoryArt() === "pp"}">Verb und Partizip</button></div></div>` : ""}
       <button class="knopf" data-a="start" ${genug ? "" : "disabled"}>Einsteigen · ${pool.length} Verben</button>
       ${genug ? "" : spaeter(g)
         ? `<p class="hinweis">Dieses Spiel braucht das Passé composé. ${h(spaeter(g))}</p>`
@@ -528,16 +590,19 @@
   }
 
   /* ---------- Spielablauf ---------- */
-  const minimum = (g) => (g.memory ? 6 : g.opt || g.id === "linie" ? 6 : 1);
+  const minimum = (g) => (g.id === "blau" ? 1 : g.opt ? 6 : 1);
+  /* Fahrt ins Blaue: alles, was bisher Pflicht war, unabhängig von der eigenen Auswahl */
+  const blauZeiten = (v) => { const pflicht = zeitenStandard(); return zeitenFuer(v).filter((z) => pflicht.includes(z)); };
   /* nur: Fahrt ab einem Bahnhof, also genau diese Zeit auf allen Linien. Die Auswahl der Schülerin bleibt unberührt. */
   function poolFuer(g, nur) {
     const zeiten = nur ? [nur] : S.setup.zeiten;
     return aktive().filter((v) => {
+      if (g.id === "blau") return E.uebbar(v) && blauZeiten(v).length > 0;
       if (!E.uebbar(v) || !(nur || S.setup.linien.includes(v.typ))) return false;   /* il y a, il faut, neiger: nur eine Form */
       const frei = zeitenFuer(v);
       if (g.id === "aux") return frei.includes("pc") && themaDa("passe_compose_etre");
-      if (g.id === "partizip" || (g.memory && memoryArt() === "pp")) return frei.includes("pc");
-      if (g.id === "bedeutung" || g.memory || g.id === "linie") return true;
+      if (g.id === "partizip") return frei.includes("pc");
+      if (g.id === "bedeutung") return true;
       return zeiten.some((z) => frei.includes(z));
     });
   }
@@ -558,7 +623,6 @@
       uhr = setInterval(tick, 200);
     }
     if (id === "reihe") neueReihe();
-    else if (id === "memory") neuesBrett();
     else neueFrage();
     zeige();
   }
@@ -571,9 +635,21 @@
     if (g) { g.firstChild.style.width = (100 - rest / 600) + "%"; g.classList.toggle("knapp", rest < 10000); }
     if (t) t.textContent = Math.ceil(rest / 1000);
   }
+  /* Mischt, was der Lernstand hergibt: être, reflexive Verben, avoir und ab accord_avoir das Objekt vor dem Verb */
+  function frageAngleichung(s) {
+    const refl = s.pool.filter((v) => v.reflexiv), rest = s.pool.filter((v) => !v.reflexiv);
+    const etre = rest.filter((v) => E.konj(v).aux === "être"), avoir = rest.filter((v) => E.konj(v).aux === "avoir");
+    const saetze = themaDa("accord_avoir") ? E.ANGLEICH_SAETZE.filter((x) => s.pool.includes(finde(x.inf))) : [];
+    const arten = [etre, etre, refl, avoir].filter((x) => x.length);
+    if (saetze.length) arten.push(saetze, saetze, saetze);
+    const wahl = E.eins(arten);
+    if (wahl === saetze) { const x = E.eins(saetze); return E.frageObjektSatz(x, finde(x.inf)); }
+    return E.frageAngleichung(E.waehle(wahl, (x) => x.inf + "|acc", S.stats, s.letztes));
+  }
   function neueFrage() {
     const s = spiel;
     s.wahl = null;
+    s.hilfe = false;
     const bonus = (s.id === "quiz" || s.id === "partizip") && s.zahl > 0 && s.zahl % 5 === 0;
     let q;
     if (bonus || s.id === "bedeutung") {
@@ -584,17 +660,21 @@
       const { z, feld } = zeitUndFeld(s);
       const v = E.waehle(feld, (x) => x.inf + "|" + z, S.stats, s.letztes);
       q = E.frageForm(v, z, s.n);
+    } else if (s.id === "blau") {
+      /* Halb frei aus allen Verben, halb über eine zufällige Linie, sonst wären fast nur -er-Verben dran */
+      const linien = FOLGE.filter((l) => s.pool.some((v) => v.typ === l)), l = E.eins(linien);
+      const feld = Math.random() < 0.5 ? s.pool : s.pool.filter((v) => v.typ === l);
+      const ohne = feld.filter((v) => v.inf !== s.letztes);
+      const v = E.eins(ohne.length ? ohne : feld);
+      q = E.frageForm(v, E.eins(blauZeiten(v)), s.n);
     } else if (s.id === "partizip") {
-      q = E.fragePartizip(E.waehle(s.pool, (x) => x.inf + "|pc", S.stats, s.letztes), s.n);
+      q = themaDa("passe_compose_etre") && Math.random() < 0.6 ? frageAngleichung(s) : E.fragePartizip(E.waehle(s.pool, (x) => x.inf + "|pc", S.stats, s.letztes), s.n);
     } else if (s.id === "aux") {
       /* Reflexive Verben sind leicht zu erkennen und zahlreich, deshalb kommen sie nur ab und zu dran */
       const refl = s.pool.filter((v) => v.reflexiv), rest = s.pool.filter((v) => !v.reflexiv);
       const etre = rest.filter((v) => E.konj(v).aux === "être"), r = Math.random();
       const feld = etre.length && r < 0.35 ? etre : refl.length && r < 0.5 ? refl : rest.length ? rest : s.pool;
       q = E.frageHilfsverb(E.waehle(feld, (x) => x.inf + "|pc", S.stats, s.letztes));
-    } else {
-      const linien = FOLGE.filter((l) => s.pool.some((v) => v.typ === l));
-      q = E.frageLinie(E.waehle(s.pool, (x) => x.inf + "|typ", S.stats, s.letztes), linien.length >= 2 ? linien : FOLGE);
     }
     s.frage = q; s.letztes = q.v.inf;
   }
@@ -678,48 +758,6 @@
     zeige();
   }
 
-  function neuesBrett() {
-    const s = spiel;
-    const art = memoryArt();
-    const wert = (v) => (art === "de" ? v.de : E.konj(v).pp);
-    const verben = [], schon = new Set();
-    for (const v of E.misch(s.pool)) {
-      if (schon.has(wert(v))) continue;
-      schon.add(wert(v)); verben.push(v);
-      if (verben.length === 6) break;
-    }
-    s.m = {
-      karten: E.misch(verben.flatMap((v) => [{ t: v.inf, v, paar: v.inf }, { t: wert(v), v, paar: v.inf }]).map((k) => Object.assign(k, { offen: false, weg: false }))),
-      gewaehlt: [], gesperrt: false, rest: verben.length, fehlerFuer: new Set()
-    };
-  }
-  function karte(i) {
-    const s = spiel, m = s.m, k = m.karten[i];
-    if (!k || m.gesperrt || k.offen || k.weg) return;
-    k.offen = true; m.gewaehlt.push(k);
-    if (m.gewaehlt.length < 2) { zeige(); return; }
-    const [x, y] = m.gewaehlt;
-    if (x.paar === y.paar) {
-      x.weg = y.weg = true; m.gewaehlt = []; m.rest--; s.zahl++;
-      verbuche(true, x.v);
-      s.zuletzt = { richtig: true, q: { voll: x.v.inf + " = " + (memoryArt() === "de" ? x.v.de : E.konj(x.v).pp), v: x.v, erklaerung: "" } };
-      sichern();
-      zeige();
-      if (m.rest === 0) wartet = setTimeout(() => {
-        if (!spiel || spiel.fertig) return;
-        if (!s.uhr) { beende(); return; }
-        neuesBrett(); zeige();
-      }, 500);
-    } else {
-      m.gesperrt = true; s.combo = 0; s.nein++;
-      zeige();
-      wartet = setTimeout(() => {
-        if (!spiel || spiel.fertig) return;
-        x.offen = y.offen = false; m.gewaehlt = []; m.gesperrt = false; zeige();
-      }, 950);
-    }
-  }
-
   /* Oben läuft die Strecke mit: Jede beantwortete Frage färbt eine Station in der Farbe ihrer Linie */
   function leiste() {
     const s = spiel;
@@ -729,8 +767,8 @@
       strecke = `<div class="gleis${r < 10000 ? " knapp" : ""}"><i style="width:${100 - r / 600}%"></i></div>`;
       zaehler = `<span id="zeit" class="stand">${Math.ceil(r / 1000)}</span>`;
     } else {
-      const ziel = s.id === "memory" ? 6 : s.g.ziel;
-      const wartend = s.id === "memory" || s.id === "reihe" || s.wahl === null;
+      const ziel = s.g.ziel;
+      const wartend = s.id === "reihe" || s.wahl === null;
       const stops = Array.from({ length: ziel }, (_, i) => {
         const x = s.spur[i];
         if (x) return `<li class="halt ${x.ok ? "ok" : "nein"}" data-l="${x.l}"></li>`;
@@ -745,7 +783,7 @@
   }
   function seiteSpiel() {
     const s = spiel;
-    const inhalt = s.id === "reihe" ? spielReihe() : s.id === "memory" ? spielMemory() : spielFrage();
+    const inhalt = s.id === "reihe" ? spielReihe() : spielFrage();
     return `<div class="spielseite"><div class="spielinnen">${leiste()}${inhalt}</div></div>`;
   }
   function kopfFrage(q, offen) {
@@ -757,24 +795,31 @@
     }
     if (q.art === "partizip") return `<div class="kicker">Participe passé von</div><div class="satz">${h(q.v.inf)}</div>`;
     if (q.art === "aux") return `<div class="kicker">Welches Gleis im Passé composé?</div><div class="satz">${h(q.v.inf)}</div>`;
-    if (q.art === "linie") return `<div class="kicker">Auf welcher Linie liegt</div><div class="satz">${h(q.v.inf)}</div>`;
+    if (q.art === "accord") {
+      const luecke = offen ? `<span class="luecke leer">&nbsp;</span>` : `<span class="luecke neu">${h(q.antwort)}</span>`;
+      return `<div class="kicker">Partizip angleichen</div><div class="satz">${h(q.vor)} ${luecke}${h(q.nach)}</div><div class="inf">${q.hinweis ? `(${h(q.hinweis)}) · ` : ""}<b>${h(q.v.inf)}</b></div>`;
+    }
     return `<div class="kicker">${q.bonus ? "Durchsage: " : ""}${q.umgekehrt ? "Wie heißt auf Französisch" : "Was heißt"}</div><div class="satz">${h(q.umgekehrt ? q.v.de : q.v.inf)}</div>`;
   }
   function spielFrage() {
     const s = spiel, q = s.frage, offen = s.wahl === null;
-    const breit = q.optionen.some((o) => o.text.length > 18) || q.art === "linie";
+    const breit = q.optionen.some((o) => o.text.length > 18);
     const ops = q.optionen.map((o, i) => {
       let k = "";
       if (!offen) { if (o.wert === q.antwort) k = " richtig"; else if (i === s.wahl) k = " falsch"; }
-      return `<button class="op${k}" data-a="op" data-w="${i}" ${o.linie ? `data-l="${o.linie}"` : ""} ${offen ? "" : "disabled"}>${h(o.text)}</button>`;
+      return `<button class="op${k}" data-a="op" data-w="${i}" ${offen ? "" : "disabled"}>${h(o.text)}</button>`;
     }).join("");
     let rueck = `<div class="rueck ruhe"></div>`;
     if (!offen) {
       const z = s.zuletzt, bed = q.art === "bedeutung" ? "" : `<span>${h(q.v.inf)} = ${h(q.v.de)}</span>`;
       if (z.richtig) rueck = `<div class="rueck gut"><b>${s.uhr ? h(q.voll) : "Richtig: " + h(q.voll)}</b>${bed}</div>`;
-      else rueck = `<div class="rueck schlecht"><b>Richtig wäre: ${h(q.voll)}</b>${q.erklaerung ? `<span>${h(q.erklaerung)}</span>` : ""}${bed}</div>`;
+      else {
+        /* Die Erklärung gibt es auf Wunsch. Im Express läuft die Fahrt sofort weiter, dort entfällt sie. */
+        const hilfe = !s.uhr && q.erklaerung;
+        rueck = `<div class="rueck schlecht"><div class="rueck-kopf"><b>Richtig wäre: ${h(q.voll)}</b>${hilfe ? `<button class="hilfe" data-a="hilfe" aria-expanded="${!!s.hilfe}" aria-label="Warum?">?</button>` : ""}</div>${hilfe && s.hilfe ? `<span>${h(q.erklaerung)}</span>` : ""}${bed}</div>`;
+      }
     }
-    return `<section class="frage" ${q.art === "linie" ? "" : `data-l="${q.v.typ}"`}>${q.art === "linie" ? "" : `<span class="rund mini">${h(L[q.v.typ].kurz)}</span>`}${kopfFrage(q, offen)}</section>
+    return `<section class="frage" data-l="${q.v.typ}">${marke(q.v.typ, true)}${kopfFrage(q, offen)}</section>
       <div class="optionen${breit ? " breit" : ""}">${ops}</div>
       ${rueck}
       ${!offen && !s.uhr ? `<button class="knopf weiter" data-a="weiter">${s.zahl >= s.g.ziel ? "Zum Terminus" : "Nächste Station"}</button>` : ""}`;
@@ -783,23 +828,13 @@
     const r = spiel.r;
     const zeilen = r.zeilen.map((z, i) => `<div class="z${i === r.pos ? " dran" : i < r.pos ? " ab" : ""}">${person(z.person)}<span>${i < r.pos ? h(z.form) : ""}</span></div>`).join("");
     const blasen = r.blasen.map((b, i) => `<button class="blase${r.wackel === i ? " wackel" : ""}" data-a="blase" data-w="${i}" ${b.weg ? "disabled" : ""}>${h(b.t)}</button>`).join("");
-    return `<section class="frage" data-l="${r.v.typ}"><span class="rund mini">${h(L[r.v.typ].kurz)}</span><div class="kicker">${E.ZEITEN[r.z]}</div><div class="satz">${h(r.v.inf)}</div><div class="inf">${r.fertig ? h(r.v.de) : "&nbsp;"}</div></section>
+    return `<section class="frage" data-l="${r.v.typ}">${marke(r.v.typ, true)}<div class="kicker">${E.ZEITEN[r.z]}</div><div class="satz">${h(r.v.inf)}</div><div class="inf">${r.fertig ? h(r.v.de) : "&nbsp;"}</div></section>
       <div class="zeilen${r.z === "subj" ? " que" : ""}" data-l="${r.v.typ}">${zeilen}</div><div class="blasen">${blasen}</div>`;
-  }
-  function spielMemory() {
-    const s = spiel, m = s.m;
-    const karten = m.karten.map((k, i) => {
-      const k1 = k.weg ? "weg" : k.offen ? "offen" : "";
-      return `<button class="karte ${k1}" data-a="karte" data-w="${i}" aria-label="${k.offen || k.weg ? h(k.t) : "Verdeckte Karte"}">${k.offen || k.weg ? h(k.t) : ""}</button>`;
-    }).join("");
-    const z = s.zuletzt;
-    return `<div class="karten">${karten}</div><div class="rueck ${z ? "gut" : "ruhe"}">${z ? `<b>${h(z.q.voll)}</b>` : `<span class="leise">Decke zwei Fahrkarten auf, die zusammengehören.</span>`}</div>`;
   }
   function seiteErgebnis() {
     const s = spiel, summe = s.ok + s.nein;
     const anteil = summe ? Math.round((s.ok / summe) * 100) : 0;
-    const memoryRuhig = s.id === "memory" && !s.uhr;
-    const titel = s.uhr ? (s.neuerRekord ? "Neuer Rekord !" : "Express am Ziel") : memoryRuhig ? "Alles gefunden !" : anteil >= 90 ? "Excellent !" : anteil >= 70 ? "Très bien !" : anteil >= 50 ? "Pas mal !" : "On continue !";
+    const titel = s.uhr ? (s.neuerRekord ? "Neuer Rekord !" : "Express am Ziel") : anteil >= 90 ? "Excellent !" : anteil >= 70 ? "Très bien !" : anteil >= 50 ? "Pas mal !" : "On continue !";
     const falsch = Array.from(s.falsch.values());
     const neu = Array.from(s.gesehen.values()).filter((v) => !s.falsch.has(v.inf)).slice(0, 8);
     const liste = (vs) => `<div class="verbliste">${vs.map((v) => `<button class="verbzeile" data-a="spielVerb" data-w="${h(v.inf)}" data-l="${v.typ}"><i class="punkt s${fortschritt(v)}"></i><b>${h(v.inf)}</b><span class="de">${h(v.de)}</span></button>`).join("")}</div>`;
@@ -807,8 +842,8 @@
       <section class="ergebnis">
         <div class="kicker">Terminus</div>
         <h1>${titel}</h1>
-        <div class="gross">${s.uhr ? s.punkte : memoryRuhig ? summe : anteil + " %"}</div>
-        <p class="leise">${s.uhr ? "Punkte" : memoryRuhig ? "Züge für 6 Paare" : `${s.ok} richtig, ${s.nein} falsch`} · ${S.km - s.km0} km gefahren${s.uhr && S.rekord[s.id] ? ` · Rekord ${S.rekord[s.id]}` : ""}</p>
+        <div class="gross">${s.uhr ? s.punkte : anteil + " %"}</div>
+        <p class="leise">${s.uhr ? "Punkte" : `${s.ok} richtig, ${s.nein} falsch`} · ${S.km - s.km0} km gefahren${s.uhr && S.rekord[s.id] ? ` · Rekord ${S.rekord[s.id]}` : ""}</p>
       </section>
       <div class="knoepfe"><button class="knopf" data-a="nochmal">Nochmal fahren</button><button class="knopf zwei" data-a="abbrechen">Aussteigen</button></div>
       ${falsch.length ? `<section class="spalte"><h2>Diese Verben nochmal anfahren</h2>${liste(falsch)}</section>` : ""}
@@ -823,13 +858,14 @@
   }
   function oeffneVerb(inf) { a.verb = inf; a.decke = false; a.offen = new Set(); }
   const AKT = {
-    tab(w) { a.tab = w; a.setup = a.linie = a.verb = a.bahnhof = null; a.bestaetige = false; try { history.replaceState(null, "", "#" + w); } catch (e) {} window.scrollTo(0, 0); },
+    tab(w) { a.tab = w; a.setup = a.linie = a.verb = a.bahnhof = null; a.suche = ""; a.bestaetige = false; try { history.replaceState(null, "", "#" + w); } catch (e) {} window.scrollTo(0, 0); },
     setup(w) { a.setup = w; window.scrollTo(0, 0); },
     linie(w) { a.linie = w; window.scrollTo(0, 0); },
     verb(w) { oeffneVerb(w); window.scrollTo(0, 0); },
     bahnhof(w) { a.bahnhof = w; window.scrollTo(0, 0); },
     bahnhofFahren(w) { const [z, art] = w.split("|"); S.setup.uhr = art === "uhr"; start("quiz", z); return true; },
     zurueck() { if (a.setup) a.setup = null; else if (a.verb) a.verb = null; else if (a.bahnhof) a.bahnhof = null; else a.linie = null; window.scrollTo(0, 0); },
+    blau(w) { S.setup.uhr = w === "uhr"; start("blau"); return true; },
     schnell(w) { S.setup.uhr = w === "uhr"; start("quiz"); },
     linieSpielen(w) { S.setup.linien = [w]; a.setup = "quiz"; a.linie = null; window.scrollTo(0, 0); },
     filter(w) { a.filter = w; },
@@ -859,12 +895,11 @@
       sichern();
     },
     n(w) { S.setup.n = Number(w); sichern(); },
-    mem(w) { S.setup.memory = w; sichern(); },
     start() { start(a.setup); },
     op(w) { antworte(Number(w)); return true; },
+    hilfe() { spiel.hilfe = !spiel.hilfe; },
     weiter() { weiter(); return true; },
     blase(w) { blase(Number(w)); return true; },
-    karte(w) { karte(Number(w)); return true; },
     abbrechen() { halt(); spiel = null; a.setup = null; window.scrollTo(0, 0); },
     nochmal() { const { id, nur } = spiel; halt(); spiel = null; start(id, nur); return true; },
     spielVerb(w) { halt(); spiel = null; a.setup = a.linie = a.bahnhof = null; a.tab = "fahrplan"; oeffneVerb(w); window.scrollTo(0, 0); },
@@ -894,6 +929,12 @@
     const fertig = AKT[b.dataset.a](b.dataset.w);
     if (!fertig) zeige();
   });
+  app.addEventListener("input", (ev) => {
+    if (ev.target.dataset.i !== "suche") return;
+    a.suche = ev.target.value;
+    const ziel = document.getElementById("fahrplanInhalt");
+    if (ziel) ziel.innerHTML = fahrplanInhalt();
+  });
   app.addEventListener("change", (ev) => {
     const c = ev.target.dataset.c;
     if (!c) return;
@@ -912,7 +953,7 @@
   });
   document.addEventListener("keydown", (ev) => {
     if (!spiel || spiel.fertig) return;
-    if (spiel.frage && spiel.id !== "reihe" && spiel.id !== "memory") {
+    if (spiel.frage && spiel.id !== "reihe") {
       if (/^[1-6]$/.test(ev.key) && spiel.wahl === null) antworte(Number(ev.key) - 1);
       else if ((ev.key === "Enter" || ev.key === " ") && spiel.wahl !== null && !spiel.uhr) { ev.preventDefault(); weiter(); }
     }
