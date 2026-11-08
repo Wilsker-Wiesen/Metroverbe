@@ -171,12 +171,12 @@
     const unites = Array.from({ length: zahl }, (_, i) => i + 1);
     const vs = jahr && unite ? vorschau(jahr, unite) : null;
     return `<main class="seite erster">
-      <div class="marke"><span>${NAME}</span></div>
+      <div class="marke"><span>${NAME}</span><img src="icons/symbol.svg" alt=""></div>
       <header class="spalte"><h1>Wo steigst du ein?</h1>
       <p>Stell das einmal ein. Dann zeigt dein Netz nur die Verben und Zeiten, die ihr schon hattet.</p></header>
       <section class="feld"><span class="lbl">Dein Lernjahr</span><div class="chips">${aufbau.map((x) =>
         `<button class="chip" data-a="neuJahr" data-w="${x.jahr}" aria-pressed="${jahr === x.jahr}">${x.jahr}. Lernjahr</button>`).join("")}</div></section>
-      ${jahr ? `<section class="feld"><span class="lbl">Bei welcher Unité seid ihr? (${zahl} im ${jahr}. Lernjahr)</span><div class="chips">${unites.map((u) =>
+      ${jahr ? `<section class="feld"><span class="lbl">Bei welcher Unité seid ihr?</span><div class="chips">${unites.map((u) =>
         `<button class="chip" data-a="neuUnite" data-w="${u}" aria-pressed="${unite === u}">Unité ${u}</button>`).join("")}</div></section>` : ""}
       ${vs ? `<section class="ticket"><div class="ticket-kopf"><span>Fahrkarte</span><span>${NAME}</span></div>
         <b class="ticket-gross">${jahr}. Lernjahr, Unité ${unite} von ${zahl}</b>
@@ -257,7 +257,7 @@
     const sub = wackelt ? `${wackelt} Verben brauchen noch Übung. Sie kommen jetzt öfter dran.` : `${n.length} Verben liegen auf deinem Netz.`;
     return `
       <header class="kopf">
-        <div class="marke"><span>${NAME}</span></div>
+        <div class="marke"><span>${NAME}</span><img src="icons/symbol.svg" alt=""></div>
         <div class="zahlen">
           <div><b>${S.km}</b><span>km gefahren</span></div>
           <div><b>${S.serie}</b><span>Tage in Folge</span></div>

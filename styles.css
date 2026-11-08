@@ -53,6 +53,8 @@ p { margin: 0; }
 }
 
 /* Name: fünf Linien unter dem Schriftzug */
+.marke { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.marke img { flex: none; width: 52px; height: 52px; border-radius: 12px; border: 1px solid var(--rand); }
 .marke span {
   display: inline-block; font: 700 38px/1 var(--titel); padding-bottom: 8px;
   background: linear-gradient(90deg, var(--er) 0 20%, var(--ir) 20% 40%, var(--irr) 40% 60%, var(--irk) 60% 80%, var(--dre) 80% 100%) bottom / 100% 5px no-repeat;
