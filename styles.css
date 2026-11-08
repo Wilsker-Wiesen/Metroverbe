@@ -47,10 +47,6 @@ p { margin: 0; }
   display: grid; place-items: center; font: 700 22px/1 var(--titel);
 }
 .rund.mini { min-width: 36px; height: 26px; padding: 0 6px; border-radius: 7px; font-size: 16px; }
-.zone {
-  display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 4px; border-radius: 11px;
-  background: var(--tinte); color: var(--bg); font: 700 14px/1 var(--titel); vertical-align: 2px;
-}
 
 /* Name: fünf Linien unter dem Schriftzug */
 .marke { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
@@ -92,9 +88,18 @@ p { margin: 0; }
 .pl-ende { fill: var(--flaeche); stroke: var(--l); stroke-width: 5; }
 .pl-ende.voll { fill: var(--l); stroke: var(--tinte); }
 .pl-zahl { font: 700 14px/1 var(--titel); fill: var(--leise); text-anchor: middle; font-variant-numeric: tabular-nums; }
-.pl-hub { fill: var(--flaeche); stroke: var(--tinte); stroke-width: 3.5; }
-.pl-name { font: 700 25px/1 var(--titel); fill: var(--tinte); text-anchor: end; }
-.pl-ziel { font: 400 13.5px/1 var(--schrift); fill: var(--leise); }
+.pl-bhf { fill: var(--flaeche); stroke: var(--tinte); stroke-width: 3.5; }
+.pl-halt.zusatz .pl-bhf { stroke-dasharray: 9 6; }
+.pl-halt.modus .pl-bhf { fill: var(--tafel); stroke-dasharray: none; }
+.pl-bhf-rand { fill: none; stroke: #ffffff; stroke-width: 1.8; stroke-dasharray: 7 5; }
+.pl-bhf-name { font: 700 23px/1 var(--titel); fill: var(--tinte); text-anchor: middle; }
+.pl-gleise { font: 700 13.5px/1 var(--schrift); fill: var(--leise); text-anchor: middle; }
+.pl-halt.modus .pl-bhf-name { fill: #ffffff; }
+.legende { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px 18px; padding: 6px 0 4px; font-size: 15px; color: var(--leise); }
+.legende span { display: inline-flex; align-items: center; gap: 7px; }
+.lg { width: 30px; height: 16px; border-radius: 8px; background: var(--flaeche); border: 2.5px solid var(--tinte); }
+.lg.modus { background: var(--tafel); }
+.lg.zusatz { border-style: dashed; }
 
 /* Fahrkarte */
 .ticket {
@@ -119,6 +124,7 @@ p { margin: 0; }
   display: flex; align-items: center; gap: 14px; background: var(--tafel); color: var(--auf-tafel); padding: 14px 16px 16px;
   border-radius: 12px; border-bottom: 7px solid var(--l);
 }
+.schild.bhf { --l: var(--signal); }
 .schild h1 { font-size: 40px; overflow-wrap: anywhere; }
 .schild p { color: var(--tafel-leise); }
 
@@ -144,7 +150,6 @@ p { margin: 0; }
   font-weight: 700; font-size: 16px; display: inline-flex; align-items: center; gap: 6px;
 }
 .chip[aria-pressed="true"] { background: var(--tinte); border-color: var(--tinte); color: var(--bg); }
-.chip[aria-pressed="true"] .zone { background: var(--bg); color: var(--tinte); }
 .chip[data-l][aria-pressed="true"] { background: var(--l); border-color: var(--l); color: var(--auf); }
 .feld { display: flex; flex-direction: column; gap: 8px; }
 .feld > label, .feld > .lbl { font-weight: 700; }
@@ -192,6 +197,11 @@ td button.deck, td.deckbar button { min-height: 28px; }
 .selbst button { flex: 1; min-height: 44px; border-radius: 8px; font-weight: 700; font-size: 15px; }
 .selbst .ja { background: var(--gut-bg); color: var(--gut); }
 .selbst .nein { background: var(--schlecht-bg); color: var(--schlecht); }
+.gleis-block { display: flex; flex-direction: column; gap: 8px; border-left: 7px solid var(--tinte); padding-left: 14px; }
+.gleis-block h3 { font-size: 28px; }
+.gleis-nr { color: var(--leise); }
+.verbzeile.bsp { grid-template-columns: 44px minmax(0, 1fr) auto; }
+.verbzeile.bsp span.de { text-align: right; }
 .merke { background: var(--flaeche2); border-radius: 10px; padding: 12px 14px; }
 
 .zurueck { align-self: flex-start; font-weight: 700; min-height: 44px; }

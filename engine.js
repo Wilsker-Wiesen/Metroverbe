@@ -10,7 +10,7 @@
     irr: { kurz: "!", name: "Unregelmäßige Verben", beispiel: "faire" }
   };
   const LINIEN_FOLGE = ["er", "ir", "irk", "dre", "irr"];
-  /* Reihenfolge = Zonen des Netzes, in der Folge, in der sie im Unterricht drankommen */
+  /* Reihenfolge = Bahnhöfe des Netzes, in der Folge, in der sie im Unterricht drankommen */
   const ZEITEN = {
     pres: "Présent", imp: "Impératif", fc: "Futur composé", pc: "Passé composé", impf: "Imparfait",
     pr: "Passé récent", prog: "Présent progressif", fs: "Futur simple", pqp: "Plus-que-parfait",
@@ -386,9 +386,9 @@
     const k = konj(v);
     return {
       art: "aux", v, zeit: "pc", schluessel: v.inf + "|pc", antwort: k.aux,
-      voll: mitSubj("il", AUX[k.aux][2]) + " " + k.pp,
-      optionen: [{ text: "avoir", wert: "avoir" }, { text: "être", wert: "être" }],
-      erklaerung: k.aux === "être" ? "Bewegung oder Zustandswechsel: Passé composé mit être." : "Die allermeisten Verben bilden das Passé composé mit avoir."
+      voll: mitSubj("il", k.refl ? pronVor(PRON[2], AUX[k.aux][2] + " " + k.pp) : AUX[k.aux][2] + " " + k.pp),
+      optionen: [{ text: "Gleis avoir", wert: "avoir" }, { text: "Gleis être", wert: "être" }],
+      erklaerung: k.refl ? "Reflexive Verben fahren immer auf Gleis être." : k.aux === "être" ? "Bewegung oder Zustandswechsel: Gleis être." : "Die allermeisten Verben fahren auf Gleis avoir."
     };
   }
 
