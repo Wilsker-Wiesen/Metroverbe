@@ -82,9 +82,6 @@ p { margin: 0; }
 .los .reihe button + button { background: #ffffff; }
 
 /* Netzplan */
-.blau-knopf { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 2px 12px; width: 100%; min-height: 58px; padding: 10px 18px; border-radius: 14px; background: var(--blau-bg); color: var(--blau); text-align: left; }
-.blau-knopf b { font: 700 26px/1.05 var(--titel); }
-.blau-knopf span { font-size: 15px; color: var(--tinte); }
 .suche input { width: 100%; min-height: 50px; padding: 0 14px; font: inherit; color: var(--tinte); background: var(--flaeche); border: 2px solid var(--tinte); border-radius: 10px; }
 .suche input::placeholder { color: var(--leise); }
 .fahrplan-inhalt { display: flex; flex-direction: column; gap: 22px; }

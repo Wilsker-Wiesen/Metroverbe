@@ -307,7 +307,6 @@
           <button data-a="schnell" data-w="uhr">Express · 60 s</button>
         </div>
       </section>
-      <button class="blau-knopf" data-a="blau" data-w="ruhe"><b>Fahrt ins Blaue</b><span>Zufälliges Verb, zufällige Form</span></button>
       <section class="plan">${netzplan()}${legende()}</section>
       <p class="hinweis mitte">Tippe auf eine Linie oder einen Bahnhof.</p>`;
   }
