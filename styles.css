@@ -1,29 +1,14 @@
-/* Métroverbe: gedruckter Netzplan auf Papier. Farbe kommt nur von den Linien, alles andere ist Papier, Tinte und Anzeigetafel. */
+/* Métroverbe: gedruckter Netzplan auf weißem Papier, immer hell. Farbe kommt nur von den Linien, alles andere ist Papier, Tinte und Anzeigetafel. */
 :root {
-  --bg: #f5f3ec; --flaeche: #ffffff; --flaeche2: #e9e6dc; --tinte: #18212e; --leise: #5c6470; --rand: #dad6ca;
+  --bg: #ffffff; --flaeche: #ffffff; --flaeche2: #eeeeea; --tinte: #18212e; --leise: #5c6470; --rand: #dad6ca;
   --er: #00875a; --ir: #f5b800; --irk: #e8590c; --dre: #7b3fd1; --irr: #e0144c;
   --auf-er: #ffffff; --auf-ir: #18212e; --auf-irk: #18212e; --auf-dre: #ffffff; --auf-irr: #ffffff;
   --gut: #00794f; --gut-bg: #d6f2e5; --schlecht: #c21240; --schlecht-bg: #fbdfe6;
   --akzent: #18212e; --auf-akzent: #ffffff;
   --tafel: #18212e; --auf-tafel: #ffffff; --tafel-leise: #b6bfcc; --signal: #ffc83d;
+  color-scheme: light;
   --schrift: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
   --titel: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
-}
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #10161f; --flaeche: #1a222e; --flaeche2: #27303e; --tinte: #f2f0e9; --leise: #a9b2bf; --rand: #343e4d;
-  --er: #2fc08b; --ir: #f7c63f; --irk: #f4834a; --dre: #a985f2; --irr: #f6587f;
-  --auf-er: #10161f; --auf-ir: #10161f; --auf-irk: #10161f; --auf-dre: #10161f; --auf-irr: #10161f;
-  --gut: #55d6a5; --gut-bg: #143f33; --schlecht: #ff8aa6; --schlecht-bg: #4a1c2c;
-  --akzent: #f2f0e9; --auf-akzent: #10161f;
-  --tafel: #05080d; --auf-tafel: #ffffff; --tafel-leise: #a9b2bf; color-scheme: dark;
-} }
-:root[data-theme="dark"] {
-  --bg: #10161f; --flaeche: #1a222e; --flaeche2: #27303e; --tinte: #f2f0e9; --leise: #a9b2bf; --rand: #343e4d;
-  --er: #2fc08b; --ir: #f7c63f; --irk: #f4834a; --dre: #a985f2; --irr: #f6587f;
-  --auf-er: #10161f; --auf-ir: #10161f; --auf-irk: #10161f; --auf-dre: #10161f; --auf-irr: #10161f;
-  --gut: #55d6a5; --gut-bg: #143f33; --schlecht: #ff8aa6; --schlecht-bg: #4a1c2c;
-  --akzent: #f2f0e9; --auf-akzent: #10161f;
-  --tafel: #05080d; --auf-tafel: #ffffff; --tafel-leise: #a9b2bf; color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
