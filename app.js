@@ -322,8 +322,7 @@
   };
   function seiteFahrten() {
     return `
-      <header class="spalte"><h1>Fahrten</h1>
-      <p class="leise">Jede Frage ist eine Station. In Ruhe oder als Express in 60 Sekunden.</p></header>
+      <header class="spalte"><h1>Fahrten</h1></header>
       <div class="spiele">
         <section class="spiel blau">${STRECKENBILD.blau}<div class="spiel-text">
           <h3>Fahrt ins Blaue</h3><p>Nichts einstellen: zufälliges Verb, zufällige Form, quer durch alles, was ihr schon hattet.</p>
