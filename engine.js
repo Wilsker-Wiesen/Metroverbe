@@ -392,13 +392,21 @@
     };
   }
 
+  /* Lückensatz mit tu oder il: Das Partizip bleibt unverändert, verrät also nichts.
+     Gefragt ist das Hilfsverb in der passenden Person: es, as, est oder a. */
   function frageHilfsverb(v) {
-    const k = konj(v);
+    const k = konj(v), p = eins([1, 2]), q = 3 - p;
+    const subj = p === 1 ? "tu" : "il";
+    const antwort = AUX[k.aux][p];
+    /* Vor es, as, est und a wird te und se immer zu t' und s' */
+    const vor = k.refl ? subj + " " + PRON_KURZ[PRON[p]] : subj;
+    const andere = k.aux === "être" ? "avoir" : "être";
+    const grund = k.refl ? "Reflexive Verben fahren immer auf Gleis être." : k.aux === "être" ? "Bewegung oder Zustandswechsel: Gleis être." : "Die allermeisten Verben fahren auf Gleis avoir.";
     return {
-      art: "aux", v, zeit: "pc", schluessel: v.inf + "|pc", antwort: k.aux,
-      voll: mitSubj("il", k.refl ? pronVor(PRON[2], AUX[k.aux][2] + " " + k.pp) : AUX[k.aux][2] + " " + k.pp),
-      optionen: [{ text: "Gleis avoir", wert: "avoir" }, { text: "Gleis être", wert: "être" }],
-      erklaerung: k.refl ? "Reflexive Verben fahren immer auf Gleis être." : k.aux === "être" ? "Bewegung oder Zustandswechsel: Gleis être." : "Die allermeisten Verben fahren auf Gleis avoir."
+      art: "aux", v, zeit: "pc", schluessel: v.inf + "|pc", antwort, vor, nach: k.pp,
+      voll: verbinde(vor, antwort) + " " + k.pp,
+      optionen: misch([antwort, AUX[andere][p], AUX[k.aux][q], AUX[andere][q]]).map((o) => ({ text: o, wert: o })),
+      erklaerung: `${grund} Zu ${subj} gehört ${antwort}.`
     };
   }
 

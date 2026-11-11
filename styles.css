@@ -121,12 +121,19 @@ p { margin: 0; }
   padding-bottom: 12px; margin-bottom: 10px; border-bottom: 2px dashed var(--rand);
 }
 .ticket-gross { font: 700 30px/1.05 var(--titel); }
-.stempelreihe { display: flex; flex-wrap: wrap; gap: 10px; }
-.stempel { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.stempel .rund { min-width: 0; padding: 0; width: 58px; height: 58px; border-radius: 50%; background: none; color: var(--rand); border: 3px dashed var(--rand); }
-.stempel.voll .rund { color: var(--l); border: 4px double var(--l); transform: rotate(-11deg); }
-.stempel .unter { bottom: -5px; }
-.stempel small { color: var(--leise); font-size: 14px; font-variant-numeric: tabular-nums; }
+/* Stempel: je Linie eine Reihe, je Zeit ein Stempel */
+.stempel-tafel { display: flex; flex-direction: column; gap: 14px; }
+.stempel-linie { display: flex; align-items: flex-start; gap: 12px; }
+.stempel-linie > .rund { flex: none; margin-top: 4px; }
+.stempelreihe { display: flex; flex-wrap: wrap; gap: 8px; }
+.stempel {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 92px; padding: 8px 10px;
+  border: 2.5px dashed var(--rand); border-radius: 12px; text-align: center;
+}
+.stempel span { font-weight: 700; font-size: 14px; line-height: 1.15; }
+.stempel small { color: var(--leise); font-size: 13px; font-variant-numeric: tabular-nums; }
+.stempel.voll { border: 4px double var(--l); color: var(--tinte); transform: rotate(-3deg); background: var(--flaeche); }
+.stempel.voll small { color: var(--tinte); font-weight: 700; }
 
 /* Stationsschild */
 .schild {
@@ -158,10 +165,34 @@ p { margin: 0; }
 .sb-welle { stroke: var(--tinte); stroke-width: 2.5; opacity: .55; }
 .sb-frage { fill: #ffffff; stroke: var(--blau); stroke-width: 4; }
 .sb-zeichen { font: 700 26px/1 var(--titel); fill: var(--blau); stroke: none; text-anchor: middle; }
-.spiel:disabled { opacity: .6; cursor: not-allowed; }
-.spiel .probe { font: 700 16px/1 var(--titel); letter-spacing: .03em; color: var(--leise); }
+.spiel:disabled, .spiel.zu { opacity: .6; cursor: not-allowed; }
+.spiel.zu .reihe button:disabled { cursor: not-allowed; }
+/* Was eine Fahrt übt: klein über dem Namen, auf Kacheln, Einstellungsseite und Linienseite */
+.was { font: 700 14px/1.1 var(--schrift); letter-spacing: .06em; text-transform: uppercase; color: var(--leise); }
 .spiel h3 { font-size: 27px; }
 .spiel p { font-size: 15px; color: var(--leise); }
+.spiel .fuss { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--rand); font-size: 14px; font-weight: 700; color: var(--tinte); }
+.spiel .fuss.zu { font-weight: 400; color: var(--leise); }
+
+/* Du übst: steht über jeder Einstellungsseite */
+.bereich { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--flaeche); border: 2px solid var(--rand); border-radius: 12px; }
+.bereich[data-l] { border-color: var(--l); border-left-width: 8px; }
+.bereich > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bereich b { font: 700 22px/1.1 var(--titel); }
+.bereich .chip { flex: none; }
+
+/* Linienseite: üben ist ein eigener Kasten unter der Tabelle */
+.ueben { border-left: 8px solid var(--l); }
+.ueben h2 { font-size: 28px; }
+.ueben-liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.ueben-liste button {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; padding: 12px 14px;
+  background: var(--flaeche); border: 2px solid var(--tinte); border-radius: 12px;
+}
+.ueben-liste button b { font: 700 22px/1.1 var(--titel); }
+.ueben-liste button small { font-size: 14px; color: var(--leise); }
+.ueben-liste button:disabled { opacity: .6; border-color: var(--rand); cursor: not-allowed; }
+.klein-link { align-self: flex-start; font-size: 15px; font-weight: 700; color: var(--tinte); text-decoration: underline; text-underline-offset: 3px; padding: 4px 0; }
 
 .linie-kopf { display: flex; align-items: center; gap: 12px; }
 .linie-kopf > div { min-width: 0; flex: 1; }
@@ -255,7 +286,9 @@ select { font: inherit; min-height: 48px; padding: 0 10px; border-radius: 8px; b
 .gleis.knapp i { background: var(--schlecht); }
 .gleis.knapp i::after { border-color: var(--schlecht); }
 .stand { font: 700 24px/1 var(--titel); min-width: 44px; text-align: right; font-variant-numeric: tabular-nums; }
-.combo { font-size: 14px; font-weight: 700; color: var(--gut); min-height: 20px; text-align: right; }
+.combo { font-size: 14px; font-weight: 700; color: var(--gut); min-height: 20px; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.unterwegs { color: var(--leise); font-weight: 700; }
+.unterwegs[data-l] { color: var(--tinte); padding-left: 8px; border-left: 5px solid var(--l); }
 
 /* Die Frage steht auf einem hellen Schild, unten läuft die Farbe der Linie */
 .frage {

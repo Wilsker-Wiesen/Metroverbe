@@ -5,22 +5,24 @@
   const GRAMMATIK = VERB_DATEN.grammatik || [];
   /* Wie viel vom Bestand gezeigt wird: 1 nur Formenträger, 2 dazu der Übungsvorrat, 3 alles */
   const UMFANG = [
-    { w: 1, name: "Nur Pflichtverben", text: "Die Verben, an denen die Konjugationsmuster hängen." },
-    { w: 2, name: "Pflicht und Vorrat", text: "Dazu die häufigen Verben mit Standardmuster." },
-    { w: 3, name: "Alle Verben", text: "Auch die thematischen Einzelwörter." }
+    { w: 1, name: "Die wichtigsten", text: "Nur die Verben, die du unbedingt können musst." },
+    { w: 2, name: "Wichtige und häufige", text: "Dazu viele häufige Verben, die genauso gehen." },
+    { w: 3, name: "Alle Verben", text: "Auch seltene Wörter aus einzelnen Themen." }
   ];
   const SCHLUESSEL = "conjugaison.v1";
   const app = document.getElementById("app");
 
-  /* Jedes Spiel ist eine Fahrt: Jede Frage ist eine Station */
+  /* Jedes Spiel ist eine Fahrt und übt genau eine Sache (was).
+     min: so viele Verben braucht die Fahrt, damit sie nicht nur aus Wiederholungen besteht.
+     linie: Diese Fahrt kann man auch nur auf einer Linie fahren. */
   const SPIELE = [
-    { id: "quiz", name: "Linienfahrt", probe: "nous ___ (finir)", text: "An jeder Station wartet eine Verbform. Wähle die richtige.", zeiten: true, opt: true, ziel: 15 },
-    { id: "partizip", name: "Endstation Partizip", probe: "prendre → ?", text: "Finde das richtige Participe passé.", textAngleich: "Finde das richtige Participe passé, auch mit Angleichung: partie oder parties?", opt: true, ziel: 15 },
-    { id: "aux", name: "Welches Gleis?", probe: "partir: Gleis être", text: "Fährt das Verb im Passé composé auf Gleis avoir oder auf Gleis être?", ziel: 15 },
-    { id: "reihe", name: "Strecke bauen", probe: "je, tu, il, nous …", text: "Tippe die Formen in der richtigen Reihenfolge an, Station für Station.", zeiten: true, ziel: 5 },
-    { id: "bedeutung", name: "Durchsage", probe: "attendre = ?", text: "Was heißt das? Französisch und Deutsch zuordnen.", opt: true, ziel: 15 },
+    { id: "quiz", name: "Linienfahrt", was: "Verbformen", text: "Ein Satz, eine Lücke: Wähle die richtige Verbform.", zeiten: true, opt: true, ziel: 15, min: 3, linie: true },
+    { id: "partizip", name: "Endstation Partizip", was: "Participe passé", text: "Finde das richtige Participe passé.", textAngleich: "Finde das richtige Participe passé, auch mit Angleichung: partie oder parties?", opt: true, ziel: 15, min: 6 },
+    { id: "aux", name: "Welches Gleis?", was: "avoir oder être", text: "tu ___ parti: Setze das Hilfsverb ein, es, as, est oder a.", ziel: 15, min: 8, etre: 3 },
+    { id: "reihe", name: "Strecke bauen", was: "Ganze Tabellen", text: "Tippe die Formen in der richtigen Reihenfolge an: je, tu, il …", zeiten: true, ziel: 5, min: 3, linie: true },
+    { id: "bedeutung", name: "Durchsage", was: "Bedeutung", text: "Was heißt das? Französisch und Deutsch zuordnen.", opt: true, ziel: 15, min: 6 },
     /* Ohne Einstellungsseite: Sie steht als eigener Block über den anderen Fahrten */
-    { id: "blau", name: "Fahrt ins Blaue", frei: true, text: "Zufälliges Verb, zufällige Form, quer durch alles, was ihr schon hattet.", opt: true, ziel: 15 }
+    { id: "blau", name: "Fahrt ins Blaue", was: "Alles gemischt", frei: true, text: "Nichts einstellen: zufälliges Verb, zufällige Form, quer durch alles, was ihr schon hattet.", opt: true, ziel: 15, min: 6 }
   ];
   /* Die Bahnhöfe des Netzes: jede Zeit und jeder Modus. Reihenfolge wie in Engine.ZEITEN */
   const BAHNHOEFE = {
@@ -59,7 +61,7 @@
     return {
       stats: {}, km: 0, serie: 0, letzter: null, rekord: {},
       stand: { an: {}, band: null, lektion: null, umfang: 2 },
-      setup: { uhr: false, zeiten: ["pres"], linien: FOLGE.slice(), n: 4 }
+      setup: { uhr: false, zeiten: ["pres"], n: 4 }
     };
   }
   function laden() {
@@ -71,6 +73,8 @@
         Object.assign(s, d);
         s.setup = Object.assign(neu().setup, d.setup);
         s.stand = Object.assign(neu().stand, d.stand);
+        /* Früher blieb eine gewählte Linie für alle Fahrten hängen. Heute gilt sie nur für eine Fahrt. */
+        delete s.setup.linien;
       }
     } catch (e) { /* Ohne Speicher läuft die App trotzdem */ }
     return s;
@@ -78,8 +82,9 @@
   function sichern() { try { localStorage.setItem(SCHLUESSEL, JSON.stringify(S)); } catch (e) { /* siehe oben */ } }
 
   let S = laden();
-  const TABS = { netz: "Netzplan", fahrten: "Fahrten", fahrplan: "Fahrplan", fahrkarte: "Fahrkarte" };
-  const a = { neu: { jahr: null, unite: null }, einzeln: false, tab: "netz", setup: null, linie: null, verb: null, bahnhof: null, suche: "", decke: false, offen: new Set(), filter: "alle", gross: false, spalten: new Set(), bestaetige: false };
+  const TABS = { netz: "Netzplan", fahrten: "Fahrten", fahrplan: "Fahrplan", fahrkarte: "Mein Stand" };
+  /* nurLinie: Die Fahrt, die gerade eingestellt wird, läuft nur auf dieser Linie. Wird nie gespeichert. */
+  const a = { neu: { jahr: null, unite: null }, einzeln: false, tab: "netz", setup: null, nurLinie: null, linie: null, verb: null, bahnhof: null, suche: "", decke: false, offen: new Set(), filter: "alle", gross: false, spalten: new Set(), bestaetige: false };
   let spiel = null, uhr = null, wartet = null;
 
   const h = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -143,13 +148,51 @@
   function standNeu() {
     S.stand.an = {};
     S.setup.zeiten = zeitenStandard();
-    S.setup.linien = FOLGE.slice();
     a.filter = "alle";
     sichern();
   }
   /* Beim Spieltext zählt, ob die Angleichung schon dran war */
   const spielText = (g) => (g.textAngleich && themaDa("passe_compose_etre") ? g.textAngleich : g.text);
   const aktive = () => VERBEN.filter(aktiv);
+  const zahlVerben = (n) => (n === 1 ? "1 Verb" : n + " Verben");
+  /* Was eine Fahrt gerade übt, in Worten. b: { linie, zeit }, beides darf fehlen. */
+  const VERBEN_DER_LINIE = { er: "Verben auf -er", ir: "Verben auf -ir mit -iss-", irk: "Verben auf -ir ohne -iss-", dre: "Verben auf -dre", irr: "unregelmäßige Verben" };
+  const linienText = (b) => (b.linie ? "Nur " + VERBEN_DER_LINIE[b.linie] : "Alle Linien");
+  function zeitenText(g, b) {
+    if (g.id === "aux" || g.id === "partizip") return "Passé composé";
+    if (g.id === "bedeutung") return "Bedeutung";
+    if (g.id === "blau") return "alles, was ihr hattet";
+    return (b.zeit ? [b.zeit] : S.setup.zeiten.filter((z) => zeitenErlaubt().includes(z))).map((z) => E.ZEITEN[z]).join(", ");
+  }
+  /* Warum eine Fahrt (noch) nicht geht, oder null. Ein Hinweis kommt nur, wenn er wirklich mehr Verben bringt. */
+  function sperre(g, b) {
+    const spt = spaeter(g);
+    if (spt) return spt;
+    const pool = poolFuer(g, b), wo = b.linie ? "Auf dieser Linie gibt es" : "Du hast";
+    if (pool.length < g.min) {
+      const mehr = VERBEN.filter((v) => bisStand(v) && E.uebbar(v) && (!b.linie || v.typ === b.linie)).length > aktive().filter((v) => E.uebbar(v) && (!b.linie || v.typ === b.linie)).length;
+      return `Braucht mindestens ${g.min} Verben. ${wo} bisher ${zahlVerben(pool.length)}.${mehr ? " Unter „Mein Stand“ kannst du mehr Verben dazunehmen." : ""}`;
+    }
+    if (g.etre) {
+      const n = pool.filter((v) => E.konj(v).aux === "être").length;
+      if (n < g.etre) return `Braucht mindestens ${g.etre} Verben mit être. ${wo} bisher ${n}.`;
+    }
+    return null;
+  }
+  /* Stempel: je Linie und Pflichtzeit. Er ist voll, wenn 8 Verben dieser Linie in dieser Zeit sitzen,
+     bei kleineren Linien alle. So gibt es schon früh etwas zu holen. */
+  const STEMPEL_ZIEL = 8;
+  function stempelListe() {
+    const zeiten = zeitenStandard(), alle = aktive().filter(E.uebbar);
+    return linienDa().map((l) => ({
+      l,
+      felder: zeiten.map((z) => {
+        const vs = alle.filter((v) => v.typ === l && zeitenFuer(v).includes(z));
+        const ziel = Math.min(STEMPEL_ZIEL, vs.length), gut = vs.filter((v) => E.stufe(v, S.stats, [z]) === 3).length;
+        return { z, ziel, gut: Math.min(gut, ziel), voll: ziel > 0 && gut >= ziel };
+      }).filter((f) => f.ziel > 0)
+    }));
+  }
   function heute(d) { const x = d || new Date(); return x.getFullYear() + "-" + (x.getMonth() + 1) + "-" + x.getDate(); }
   function serieZaehlen() {
     const h1 = heute();
@@ -194,12 +237,12 @@
         `<button class="chip" data-a="neuJahr" data-w="${x.jahr}" aria-pressed="${jahr === x.jahr}">${x.jahr}. Lernjahr</button>`).join("")}</div></section>
       ${jahr ? `<section class="feld"><span class="lbl">Bei welcher Unité seid ihr?</span><div class="chips">${unites.map((u) =>
         `<button class="chip" data-a="neuUnite" data-w="${u}" aria-pressed="${unite === u}">Unité ${u}</button>`).join("")}</div></section>` : ""}
-      ${vs ? `<section class="ticket"><div class="ticket-kopf"><span>Fahrkarte</span><span>${NAME}</span></div>
+      ${vs ? `<section class="ticket"><div class="ticket-kopf"><span>Dein Stand</span><span>${NAME}</span></div>
         <b class="ticket-gross">${jahr}. Lernjahr, Unité ${unite} von ${zahl}</b>
-        <span>${vs.n} Verben${vs.refl ? ", auch reflexive" : ""}</span>
+        <span>${zahlVerben(vs.n)}${vs.refl ? ", auch reflexive" : ""}</span>
         <span class="leise">Bahnhöfe: ${h(vs.zeiten.join(", "))}</span></section>
-      <button class="knopf" data-a="neuFertig">Fahrkarte lösen</button>
-      <p class="hinweis">Du kannst das später unter „Fahrkarte“ ändern.</p>` : ""}
+      <button class="knopf" data-a="neuFertig">Einsteigen</button>
+      <p class="hinweis">Du kannst das später unter „Mein Stand“ ändern.</p>` : ""}
     </main>`;
   }
   function tabs() {
@@ -208,7 +251,6 @@
   }
   /* Die Linienmarke. -ir mit -iss- trägt unter der Marke ein kleines Zusatzschild. */
   const marke = (l, klein) => `<span class="rund${klein ? " mini" : ""}">${h(L[l].kurz)}${L[l].unter ? `<i class="unter">${h(L[l].unter)}</i>` : ""}</span>`;
-  const sitzt = () => aktive().filter((v) => fortschritt(v) === 3).length;
 
   /* Der Netzplan: Die Linie sagt, welche Verben, der Bahnhof, welche Zeit. Jede Linie fährt durch jeden Bahnhof. */
   function punktAuf(p, t) {
@@ -288,27 +330,34 @@
     return `<div class="legende">${teile.join("")}</div>`;
   }
   function seiteNetz() {
-    const n = aktive();
-    const wackelt = n.filter((v) => { const s = fortschritt(v); return s === 1 || s === 2; }).length;
-    const sub = wackelt ? `${wackelt} Verben brauchen noch Übung. Sie kommen jetzt öfter dran.` : `${n.length} Verben liegen auf deinem Netz.`;
+    const quiz = SPIELE[0], zu = sperre(quiz, {});
+    const st = stempelListe().flatMap((x) => x.felder);
+    /* Der Schnellstart sagt, was er übt: Linienfahrt über alle Linien in den gewählten Bahnhöfen */
+    const los = zu
+      ? `<section class="los">
+        <div class="spalte"><h2>Gleich geht's los</h2><p>Für eine Fahrt brauchst du mindestens ${quiz.min} Verben, bisher hast du ${zahlVerben(poolFuer(quiz, {}).length)}. Bis dahin kannst du im Fahrplan Formen abdecken und dich selbst abfragen.</p></div>
+        <div class="reihe"><button data-a="tab" data-w="fahrplan">Zum Fahrplan</button></div>
+      </section>`
+      : `<section class="los">
+        <div class="spalte"><h2>Einsteigen</h2><p><b>Linienfahrt</b> · Alle Linien · ${h(zeitenText(quiz, {}))}</p></div>
+        <div class="reihe">
+          <button data-a="schnell" data-w="ruhe">In Ruhe</button>
+          <button data-a="schnell" data-w="uhr">Express · 60 s</button>
+        </div>
+        <button class="klein-link" data-a="setup" data-w="quiz">Bahnhöfe ändern</button>
+      </section>`;
     return `
       <header class="kopf">
         <div class="marke"><span>${NAME}</span><img src="icons/symbol.svg" alt=""></div>
         <div class="zahlen">
           <div><b>${S.km}</b><span>km gefahren</span></div>
           <div><b>${S.serie}</b><span>Tage in Folge</span></div>
-          <div><b>${sitzt()}/${n.length}</b><span>Verben sitzen</span></div>
+          <div><b>${st.filter((f) => f.voll).length}/${st.length}</b><span>Stempel</span></div>
         </div>
       </header>
-      <section class="los">
-        <div class="spalte"><h2>Einsteigen</h2><p>${sub}</p></div>
-        <div class="reihe">
-          <button data-a="schnell" data-w="ruhe">In Ruhe</button>
-          <button data-a="schnell" data-w="uhr">Express · 60 s</button>
-        </div>
-      </section>
+      ${los}
       <section class="plan">${netzplan()}${legende()}</section>
-      <p class="hinweis mitte">Tippe auf eine Linie oder einen Bahnhof.</p>`;
+      <p class="hinweis mitte">Tippe auf eine Linie, um ihre Tabelle anzusehen, oder auf einen Bahnhof.</p>`;
   }
   /* Jede Fahrt hat ihr eigenes Streckenbild auf hellem Grund, in den Farben der Linien */
   const bild = (innen) => `<svg class="streckenbild" viewBox="0 0 240 56" aria-hidden="true">${innen}</svg>`;
@@ -320,18 +369,26 @@
     bedeutung: bild(`<path d="M-6 28 H246" stroke="var(--irr)"/><circle cx="120" cy="28" r="10" class="sb-hub"/>${[17, 30, 43].map((r) => `<path d="M${120 - r} ${28 - r * 0.6} Q${120 - r * 1.3} 28 ${120 - r} ${28 + r * 0.6} M${120 + r} ${28 - r * 0.6} Q${120 + r * 1.3} 28 ${120 + r} ${28 + r * 0.6}" class="sb-welle"/>`).join("")}`),
     blau: bild(`<path d="M-6 28 H246" stroke="var(--blau)" stroke-dasharray="13 10"/><circle cx="120" cy="28" r="17" class="sb-frage"/><text x="120" y="37" class="sb-zeichen">?</text>`)
   };
+  /* Unten auf jeder Kachel: wie viele Verben die Fahrt hat, oder warum sie noch zu ist */
+  function kachelFuss(g) {
+    const zu = sperre(g, {});
+    return zu ? `<span class="fuss zu">${h(zu)}</span>` : `<span class="fuss">${zahlVerben(poolFuer(g, {}).length)}</span>`;
+  }
   function seiteFahrten() {
+    const blau = SPIELE.find((s) => s.id === "blau"), blauZu = !!sperre(blau, {});
     return `
-      <header class="spalte"><h1>Fahrten</h1></header>
+      <header class="spalte"><h1>Fahrten</h1>
+      <p class="leise">Alle Fahrten laufen über alle Linien. Nur eine Linie üben: im Netzplan auf die Linie tippen.</p></header>
       <div class="spiele">
-        <section class="spiel blau">${STRECKENBILD.blau}<div class="spiel-text">
-          <h3>Fahrt ins Blaue</h3><p>Nichts einstellen: zufälliges Verb, zufällige Form, quer durch alles, was ihr schon hattet.</p>
-          <div class="reihe"><button data-a="blau" data-w="ruhe">In Ruhe</button><button data-a="blau" data-w="uhr">Express · 60 s</button></div>
+        <section class="spiel blau${blauZu ? " zu" : ""}">${STRECKENBILD.blau}<div class="spiel-text">
+          <span class="was">${h(blau.was)}</span><h3>${h(blau.name)}</h3><p>${h(blau.text)}</p>
+          <div class="reihe"><button data-a="blau" data-w="ruhe" ${blauZu ? "disabled" : ""}>In Ruhe</button><button data-a="blau" data-w="uhr" ${blauZu ? "disabled" : ""}>Express · 60 s</button></div>
+          ${kachelFuss(blau)}
         </div></section>
-        ${SPIELE.filter((s) => !s.frei).map((s) => { const spt = spaeter(s); return `
-        <button class="spiel" data-a="setup" data-w="${s.id}" ${spt ? "disabled" : ""}>${STRECKENBILD[s.id]}<div class="spiel-text">
-          <span class="probe">${h(s.probe)}</span><h3>${h(s.name)}</h3><p>${h(spt || spielText(s))}</p>
-        </div></button>`; }).join("")}</div>`;
+        ${SPIELE.filter((s) => !s.frei).map((s) => `
+        <button class="spiel" data-a="setup" data-w="${s.id}" ${sperre(s, {}) ? "disabled" : ""}>${STRECKENBILD[s.id]}<div class="spiel-text">
+          <span class="was">${h(s.was)}</span><h3>${h(s.name)}</h3><p>${h(spielText(s))}</p>${kachelFuss(s)}
+        </div></button>`).join("")}</div>`;
   }
   function seiteLinie() {
     const l = a.linie, t = LINIEN_TEXT[l], vs = VERBEN.filter((v) => v.typ === l && aktiv(v));
@@ -347,8 +404,14 @@
       <p>${h(t.text)}</p>
       ${tabelle}
       <p class="merke">${h(t.extra)}</p>
-      <button class="knopf" data-a="linieSpielen" data-w="${l}">Diese Linie fahren</button>
-      <section class="spalte"><h2>Stationen</h2>${verbliste(vs, true)}</section>`;
+      <section class="los ueben" data-l="${l}">
+        <div class="spalte"><h2>Nur diese Linie üben</h2><p>Hier kommen nur ${h(VERBEN_DER_LINIE[l])} dran. Deine anderen Fahrten bleiben, wie sie sind.</p></div>
+        <div class="ueben-liste">${SPIELE.filter((g) => g.linie).map((g) => {
+          const zu = sperre(g, { linie: l });
+          return `<button data-a="linieUeben" data-w="${g.id}|${l}" ${zu ? "disabled" : ""}><span class="was">${h(g.was)}</span><b>${h(g.name)}</b><small>${h(zu || zahlVerben(poolFuer(g, { linie: l }).length))}</small></button>`;
+        }).join("")}</div>
+      </section>
+      <section class="spalte"><h2>Verben dieser Linie</h2>${verbliste(vs, true)}</section>`;
   }
   function verbliste(vs, schiene, text) {
     return `<div class="verbliste${schiene ? " schiene" : ""}">${vs.map((v) => `
@@ -416,7 +479,7 @@
     </div>`;
     return `
       <div class="spalte">${art}${filter}</div>
-      <button class="knopf zwei" data-a="zufall" ${vs.length ? "" : "disabled"}>Zufällige Station abfragen</button>
+      <button class="knopf zwei" data-a="zufall" ${vs.length ? "" : "disabled"}>Zufälliges Verb abfragen</button>
       ${a.gross ? grosseTabelle(vs) : verbliste(vs)}`;
   }
   const SPALTEN = [["de", "Bedeutung"], ["je", "je"], ["nous", "nous"], ["ils", "ils/elles"], ["pp", "Partizip"], ["aux", "Hilfsverb"]];
@@ -471,14 +534,14 @@
   function seiteBahnhof() {
     const z = a.bahnhof, b = BAHNHOEFE[z], gleise = gleiseVon(z);
     const zusatz = !zeitenStandard().includes(z);
-    const genug = fahrbar(z).length >= 6;
+    const zu = sperre(SPIELE[0], { zeit: z }), genug = !zu;
     return `
       <button class="zurueck" data-a="zurueck">← Zurück</button>
       <header class="schild bhf"><div><h1>${h(E.ZEITEN[z])}</h1><p>${b.art}. ${h(b.de)}</p></div></header>
       <p class="merke"><b>So wird gebaut:</b> ${h(b.regel)}</p>
       ${zusatz ? `<p class="hinweis">Das steht bei euch in einem Zusatzteil. In deinen Fahrten ist es deshalb nicht vorgewählt.</p>` : ""}
       <section class="los">
-        <div class="spalte"><h2>Hier einsteigen</h2><p>${genug ? `Nur ${h(E.ZEITEN[z])}, alle Linien.` : "Dafür brauchst du mindestens 6 Verben auf deinem Netz."}</p></div>
+        <div class="spalte"><h2>Nur diesen Bahnhof üben</h2><p>${genug ? `<b>Linienfahrt</b> · Alle Linien · Nur ${h(E.ZEITEN[z])}` : h(zu)}</p></div>
         <div class="reihe">
           <button data-a="bahnhofFahren" data-w="${z}|ruhe" ${genug ? "" : "disabled"}>In Ruhe</button>
           <button data-a="bahnhofFahren" data-w="${z}|uhr" ${genug ? "" : "disabled"}>Express · 60 s</button>
@@ -522,10 +585,10 @@
     const u = S.stand.umfang || 3;
     const zahlFuer = (w) => bisher.filter((v) => (v.prio || 1) <= w).length;
     const gueltig = `${S.stand.band}. Lernjahr${S.stand.lektion ? `, Unité ${S.stand.lektion} von ${zahl}` : ""}`;
-    const stempel = linienDa().map((l) => {
-      const vs = aktive().filter((v) => v.typ === l), gut = vs.filter((v) => fortschritt(v) === 3).length;
-      return `<div class="stempel${vs.length && gut === vs.length ? " voll" : ""}" data-l="${l}">${marke(l)}<small>${gut}/${vs.length}</small></div>`;
-    }).join("");
+    /* Je Linie eine Reihe, je Pflichtzeit ein Stempel */
+    const stempel = stempelListe().filter((x) => x.felder.length).map((x) => `
+      <div class="stempel-linie" data-l="${x.l}">${marke(x.l, true)}<div class="stempelreihe">${x.felder.map((f) =>
+        `<div class="stempel${f.voll ? " voll" : ""}"><span>${h(E.ZEITEN[f.z])}</span><small>${f.voll ? "geschafft" : f.gut + "/" + f.ziel}</small></div>`).join("")}</div></div>`).join("");
     const einzeln = FOLGE.map((l) => {
       const vs = bisher.filter((v) => v.typ === l);
       if (!vs.length) return "";
@@ -537,10 +600,10 @@
       </section>`;
     }).join("");
     return `
-      <section class="ticket"><div class="ticket-kopf"><span>Fahrkarte</span><span>${NAME}</span></div>
-        <span class="leise klein">Gültig bis</span>
+      <section class="ticket"><div class="ticket-kopf"><span>Mein Stand</span><span>${NAME}</span></div>
+        <span class="leise klein">Ihr seid im</span>
         <b class="ticket-gross">${gueltig}</b>
-        <span>${n} von ${bisher.length} Verben auf deinem Netz</span>
+        <span>${n} von ${zahlVerben(bisher.length)} auf deinem Netz</span>
         <span class="leise">Bahnhöfe: ${h(zeitenErlaubt().map((z) => E.ZEITEN[z]).join(", "))}</span>
       </section>
       <section class="feld"><span class="lbl">Wo stehst du gerade?</span><div class="reihe">
@@ -548,8 +611,8 @@
         <label for="lektion" hidden>Unité</label><select id="lektion" data-c="lektion"><option value="">Ganzes Lernjahr</option>${Array.from({ length: zahl }, (_, i) => i + 1).map((l) => `<option value="${l}" ${S.stand.lektion === l ? "selected" : ""}>Unité ${l}</option>`).join("")}</select>
       </div></section>
       <section class="spalte"><h2>Deine Stempel</h2>
-        <div class="stempelreihe">${stempel}</div>
-        <p class="hinweis">Sitzt eine ganze Linie, bekommst du ihren Stempel.</p></section>
+        <p class="hinweis">Sitzen ${STEMPEL_ZIEL} Verben einer Linie in einer Zeit, bekommst du den Stempel. Hat die Linie weniger Verben, müssen alle sitzen. Ein Verb sitzt, wenn du es in dieser Zeit etwa viermal richtig hattest. Fehler zählen dagegen.</p>
+        <div class="stempel-tafel">${stempel}</div></section>
       <section class="feld"><span class="lbl">Wie groß soll dein Netz sein?</span><div class="chips">${UMFANG.map((o) =>
         `<button class="chip" data-a="umfang" data-w="${o.w}" aria-pressed="${u === o.w}">${o.name} (${zahlFuer(o.w)})</button>`).join("")}</div>
         <p class="hinweis">${h((UMFANG.find((o) => o.w === u) || UMFANG[2]).text)}</p></section>
@@ -564,11 +627,17 @@
   }
   function seiteSetup() {
     const g = SPIELE.find((s) => s.id === a.setup), s = S.setup, rek = S.rekord[g.id];
-    const pool = poolFuer(g);
-    const genug = pool.length >= minimum(g);
+    const b = { linie: a.nurLinie };
+    const pool = poolFuer(g, b), zu = sperre(g, b);
+    /* Oben steht immer, was geübt wird. Eine einzelne Linie lässt sich hier wieder lösen. */
+    const bereich = b.linie
+      ? `<div class="bereich" data-l="${b.linie}">${marke(b.linie, true)}<div><span class="lbl">Du übst</span><b>${h(linienText(b))}</b></div>
+        <button class="chip" data-a="alleLinien">Alle Linien</button></div>`
+      : `<div class="bereich"><div><span class="lbl">Du übst</span><b>Alle Linien</b></div></div>`;
     return `<main class="seite">
       <button class="zurueck" data-a="zurueck">← Zurück</button>
-      <header class="spalte"><h1>${h(g.name)}</h1><p>${h(spielText(g))}</p>${rek ? `<p class="leise klein">Dein Express-Rekord: ${rek} Punkte</p>` : ""}</header>
+      <header class="spalte"><span class="was">${h(g.was)}</span><h1>${h(g.name)}</h1><p>${h(spielText(g))}</p>${rek ? `<p class="leise klein">Dein Express-Rekord: ${rek} Punkte</p>` : ""}</header>
+      ${bereich}
       <div class="feld"><span class="lbl">Tempo</span><div class="chips">
         <button class="chip" data-a="uhr" data-w="0" aria-pressed="${!s.uhr}">In Ruhe</button>
         <button class="chip" data-a="uhr" data-w="1" aria-pressed="${s.uhr}">Express · 60 s</button>
@@ -576,27 +645,25 @@
       ${g.zeiten ? `<div class="feld"><span class="lbl">Bahnhöfe</span><div class="chips">${zeitenErlaubt().map((z) => [z, E.ZEITEN[z]]).map(([z, t]) =>
         `<button class="chip" data-a="zeit" data-w="${z}" aria-pressed="${s.zeiten.includes(z)}">${t}</button>`).join("")}</div>${
         zeitenErlaubt().length > zeitenStandard().length ? `<p class="hinweis">Bahnhöfe aus Zusatzteilen und Randthemen sind nicht vorgewählt. Tippe sie an, wenn du sie üben willst.</p>` : ""}</div>` : ""}
-      <div class="feld"><span class="lbl">Linien</span><div class="chips">${linienDa().map((l) =>
-        `<button class="chip" data-l="${l}" data-a="lin" data-w="${l}" aria-pressed="${s.linien.includes(l)}">${h(L[l].name)}</button>`).join("")}</div></div>
       ${g.opt ? `<div class="feld"><span class="lbl">Antwortmöglichkeiten</span><div class="chips">${[4, 5, 6].map((n) =>
         `<button class="chip" data-a="n" data-w="${n}" aria-pressed="${s.n === n}">${n}</button>`).join("")}</div></div>` : ""}
-      <button class="knopf" data-a="start" ${genug ? "" : "disabled"}>Einsteigen · ${pool.length} Verben</button>
-      ${genug ? "" : spaeter(g)
-        ? `<p class="hinweis">Dieses Spiel braucht das Passé composé. ${h(spaeter(g))}</p>`
-        : `<p class="hinweis">Dafür brauchst du mindestens ${minimum(g)} Verben. Wähle mehr Linien, einen größeren Umfang oder ergänze Verben unter „Fahrkarte“.</p>`}
+      <button class="knopf" data-a="start" ${zu ? "disabled" : ""}>Einsteigen · ${zahlVerben(pool.length)}</button>
+      ${zu ? `<p class="hinweis">${h(zu)}${g.zeiten && !spaeter(g) ? " Oder wähle mehr Bahnhöfe." : ""}</p>` : ""}
     </main>`;
   }
 
   /* ---------- Spielablauf ---------- */
-  const minimum = (g) => (g.id === "blau" ? 1 : g.opt ? 6 : 1);
   /* Fahrt ins Blaue: alles, was bisher Pflicht war, unabhängig von der eigenen Auswahl */
   const blauZeiten = (v) => { const pflicht = zeitenStandard(); return zeitenFuer(v).filter((z) => pflicht.includes(z)); };
-  /* nur: Fahrt ab einem Bahnhof, also genau diese Zeit auf allen Linien. Die Auswahl der Schülerin bleibt unberührt. */
-  function poolFuer(g, nur) {
-    const zeiten = nur ? [nur] : S.setup.zeiten;
+  /* b.zeit: Fahrt ab einem Bahnhof, also genau diese Zeit. b.linie: nur Verben dieser Linie.
+     Beides gilt nur für diese eine Fahrt, die gespeicherte Auswahl bleibt unberührt. */
+  function poolFuer(g, b) {
+    b = b || {};
+    const zeiten = b.zeit ? [b.zeit] : S.setup.zeiten;
     return aktive().filter((v) => {
-      if (g.id === "blau") return E.uebbar(v) && blauZeiten(v).length > 0;
-      if (!E.uebbar(v) || !(nur || S.setup.linien.includes(v.typ))) return false;   /* il y a, il faut, neiger: nur eine Form */
+      if (!E.uebbar(v)) return false;   /* il y a, il faut, neiger: nur eine Form */
+      if (b.linie && v.typ !== b.linie) return false;
+      if (g.id === "blau") return blauZeiten(v).length > 0;
       const frei = zeitenFuer(v);
       if (g.id === "aux") return frei.includes("pc") && themaDa("passe_compose_etre");
       if (g.id === "partizip") return frei.includes("pc");
@@ -610,12 +677,13 @@
     const z = E.eins(moeglich);
     return { z, feld: s.pool.filter((v) => zeitenFuer(v).includes(z)) };
   }
-  function start(id, nur) {
+  function start(id, b) {
+    b = b || {};
     const g = SPIELE.find((s) => s.id === id);
-    const pool = poolFuer(g, nur);
-    if (pool.length < minimum(g)) { a.setup = id; zeige(); return; }
+    const pool = poolFuer(g, b);
+    if (sperre(g, b)) { a.setup = id; a.nurLinie = b.linie || null; zeige(); return; }
     halt();
-    spiel = { g, id, nur, uhr: S.setup.uhr, pool, n: S.setup.n, zeiten: nur ? [nur] : S.setup.zeiten.slice(), punkte: 0, combo: 0, ok: 0, nein: 0, zahl: 0, falsch: new Map(), gesehen: new Map(), frage: null, wahl: null, letztes: null, ende: 0, km0: S.km, fertig: false, zuletzt: null, spur: [] };
+    spiel = { g, id, b, uhr: S.setup.uhr, pool, n: S.setup.n, zeiten: b.zeit ? [b.zeit] : S.setup.zeiten.slice(), punkte: 0, combo: 0, ok: 0, nein: 0, zahl: 0, falsch: new Map(), gesehen: new Map(), frage: null, wahl: null, letztes: null, ende: 0, km0: S.km, fertig: false, zuletzt: null, spur: [] };
     if (spiel.uhr) {
       spiel.ende = Date.now() + 60000;
       uhr = setInterval(tick, 200);
@@ -648,12 +716,11 @@
     const s = spiel;
     s.wahl = null;
     s.hilfe = false;
-    const bonus = (s.id === "quiz" || s.id === "partizip") && s.zahl > 0 && s.zahl % 5 === 0;
     let q;
-    if (bonus || s.id === "bedeutung") {
+    /* Jede Fahrt übt nur ihre eigene Sache. Bedeutungen gibt es nur in der Durchsage. */
+    if (s.id === "bedeutung") {
       const v = E.waehle(s.pool, (x) => x.inf + "|de", S.stats, s.letztes);
       q = E.frageBedeutung(v, s.pool.length >= 6 ? s.pool : aktive(), s.n);
-      q.bonus = bonus;
     } else if (s.id === "quiz") {
       const { z, feld } = zeitUndFeld(s);
       const v = E.waehle(feld, (x) => x.inf + "|" + z, S.stats, s.letztes);
@@ -775,9 +842,11 @@
       strecke = `<ol class="strecke" aria-hidden="true">${stops}</ol>`;
       zaehler = `<span class="stand">${Math.min(s.spur.length + (wartend ? 1 : 0), ziel)}/${ziel}</span>`;
     }
-    const ohneHalt = s.combo >= 3 ? `${s.combo} Stationen ohne Halt` : "";
+    const ohneHalt = s.combo >= 3 ? `${s.combo} richtig in Folge` : "";
+    /* Unter der Leiste steht immer, was diese Fahrt übt */
+    const bereich = `<span class="unterwegs"${s.b.linie ? ` data-l="${s.b.linie}"` : ""}>${h(s.g.name)} · ${h(linienText(s.b))}${s.b.zeit ? " · Nur " + h(E.ZEITEN[s.b.zeit]) : ""}</span>`;
     return `<div class="leiste"><button class="x" data-a="abbrechen" aria-label="Aussteigen">✕</button>${strecke}${zaehler}</div>
-      <div class="combo">${s.uhr ? `${s.punkte} Punkte${ohneHalt ? " · " + ohneHalt : ""}` : ohneHalt}</div>`;
+      <div class="combo">${bereich}<span>${s.uhr ? `${s.punkte} Punkte${ohneHalt ? " · " + ohneHalt : ""}` : ohneHalt}</span></div>`;
   }
   function seiteSpiel() {
     const s = spiel;
@@ -792,12 +861,16 @@
       return `<div class="kicker">${E.ZEITEN[q.zeit]}</div><div class="satz">${subj}${luecke}${q.zeit === "imp" && !offen ? " !" : ""}</div><div class="inf">${zusatz}<b>${h(q.v.inf)}</b></div>`;
     }
     if (q.art === "partizip") return `<div class="kicker">Participe passé von</div><div class="satz">${h(q.v.inf)}</div>`;
-    if (q.art === "aux") return `<div class="kicker">Welches Gleis im Passé composé?</div><div class="satz">${h(q.v.inf)}</div>`;
+    if (q.art === "aux") {
+      const luecke = offen ? `<span class="luecke leer">&nbsp;</span>` : `<span class="luecke neu">${h(q.antwort)}</span>`;
+      const vor = /'$/.test(q.vor) ? h(q.vor) : h(q.vor) + " ";
+      return `<div class="kicker">Passé composé · Gleis avoir oder être?</div><div class="satz">${vor}${luecke} ${h(q.nach)}</div><div class="inf"><b>${h(q.v.inf)}</b></div>`;
+    }
     if (q.art === "accord") {
       const luecke = offen ? `<span class="luecke leer">&nbsp;</span>` : `<span class="luecke neu">${h(q.antwort)}</span>`;
       return `<div class="kicker">Partizip angleichen</div><div class="satz">${h(q.vor)} ${luecke}${h(q.nach)}</div><div class="inf">${q.hinweis ? `(${h(q.hinweis)}) · ` : ""}<b>${h(q.v.inf)}</b></div>`;
     }
-    return `<div class="kicker">${q.bonus ? "Durchsage: " : ""}${q.umgekehrt ? "Wie heißt auf Französisch" : "Was heißt"}</div><div class="satz">${h(q.umgekehrt ? q.v.de : q.v.inf)}</div>`;
+    return `<div class="kicker">${q.umgekehrt ? "Wie heißt auf Französisch" : "Was heißt"}</div><div class="satz">${h(q.umgekehrt ? q.v.de : q.v.inf)}</div>`;
   }
   function spielFrage() {
     const s = spiel, q = s.frage, offen = s.wahl === null;
@@ -820,7 +893,7 @@
     return `<section class="frage" data-l="${q.v.typ}">${marke(q.v.typ, true)}${kopfFrage(q, offen)}</section>
       <div class="optionen${breit ? " breit" : ""}">${ops}</div>
       ${rueck}
-      ${!offen && !s.uhr ? `<button class="knopf weiter" data-a="weiter">${s.zahl >= s.g.ziel ? "Zum Terminus" : "Nächste Station"}</button>` : ""}`;
+      ${!offen && !s.uhr ? `<button class="knopf weiter" data-a="weiter">${s.zahl >= s.g.ziel ? "Zum Ergebnis" : "Weiter"}</button>` : ""}`;
   }
   function spielReihe() {
     const r = spiel.r;
@@ -842,10 +915,11 @@
         <h1>${titel}</h1>
         <div class="gross">${s.uhr ? s.punkte : anteil + " %"}</div>
         <p class="leise">${s.uhr ? "Punkte" : `${s.ok} richtig, ${s.nein} falsch`} · ${S.km - s.km0} km gefahren${s.uhr && S.rekord[s.id] ? ` · Rekord ${S.rekord[s.id]}` : ""}</p>
+        <p class="leise klein">${h(s.g.name)} · ${h(linienText(s.b))}${s.b.zeit ? " · Nur " + h(E.ZEITEN[s.b.zeit]) : ""}</p>
       </section>
       <div class="knoepfe"><button class="knopf" data-a="nochmal">Nochmal fahren</button><button class="knopf zwei" data-a="abbrechen">Aussteigen</button></div>
       ${falsch.length ? `<section class="spalte"><h2>Diese Verben nochmal anfahren</h2>${liste(falsch)}</section>` : ""}
-      ${neu.length ? `<section class="spalte"><h2>Unterwegs gehalten</h2>${liste(neu)}</section>` : ""}
+      ${neu.length ? `<section class="spalte"><h2>Auch dabei</h2>${liste(neu)}</section>` : ""}
     </div></div>`;
   }
 
@@ -856,16 +930,18 @@
   }
   function oeffneVerb(inf) { a.verb = inf; a.decke = false; a.offen = new Set(); }
   const AKT = {
-    tab(w) { a.tab = w; a.setup = a.linie = a.verb = a.bahnhof = null; a.suche = ""; a.bestaetige = false; try { history.replaceState(null, "", "#" + w); } catch (e) {} window.scrollTo(0, 0); },
+    tab(w) { a.tab = w; a.setup = a.nurLinie = a.linie = a.verb = a.bahnhof = null; a.suche = ""; a.bestaetige = false; try { history.replaceState(null, "", "#" + w); } catch (e) {} window.scrollTo(0, 0); },
     setup(w) { a.setup = w; window.scrollTo(0, 0); },
     linie(w) { a.linie = w; window.scrollTo(0, 0); },
     verb(w) { oeffneVerb(w); window.scrollTo(0, 0); },
     bahnhof(w) { a.bahnhof = w; window.scrollTo(0, 0); },
-    bahnhofFahren(w) { const [z, art] = w.split("|"); S.setup.uhr = art === "uhr"; start("quiz", z); return true; },
-    zurueck() { if (a.setup) a.setup = null; else if (a.verb) a.verb = null; else if (a.bahnhof) a.bahnhof = null; else a.linie = null; window.scrollTo(0, 0); },
+    bahnhofFahren(w) { const [z, art] = w.split("|"); S.setup.uhr = art === "uhr"; start("quiz", { zeit: z }); return true; },
+    zurueck() { if (a.setup) a.setup = a.nurLinie = null; else if (a.verb) a.verb = null; else if (a.bahnhof) a.bahnhof = null; else a.linie = null; window.scrollTo(0, 0); },
     blau(w) { S.setup.uhr = w === "uhr"; start("blau"); return true; },
     schnell(w) { S.setup.uhr = w === "uhr"; start("quiz"); },
-    linieSpielen(w) { S.setup.linien = [w]; a.setup = "quiz"; a.linie = null; window.scrollTo(0, 0); },
+    /* Eine Fahrt nur auf dieser Linie einstellen. Die Linienseite bleibt dahinter, Zurück führt wieder hin. */
+    linieUeben(w) { const [id, l] = w.split("|"); a.setup = id; a.nurLinie = l; window.scrollTo(0, 0); },
+    alleLinien() { a.nurLinie = null; },
     filter(w) { a.filter = w; },
     gross(w) { a.gross = w === "1"; a.offen = new Set(); },
     spalte(w) { if (a.spalten.has(w)) a.spalten.delete(w); else a.spalten.add(w); a.offen = new Set(); },
@@ -887,20 +963,15 @@
     },
     uhr(w) { S.setup.uhr = w === "1"; sichern(); },
     zeit(w) { if (S.setup.zeiten.length > 1 || !S.setup.zeiten.includes(w)) umschalten(S.setup.zeiten, w); sichern(); },
-    lin(w) {
-      const sichtbar = S.setup.linien.filter((l) => linienDa().includes(l));
-      if (sichtbar.length > 1 || !sichtbar.includes(w)) umschalten(S.setup.linien, w);
-      sichern();
-    },
     n(w) { S.setup.n = Number(w); sichern(); },
-    start() { start(a.setup); },
+    start() { start(a.setup, { linie: a.nurLinie }); },
     op(w) { antworte(Number(w)); return true; },
     hilfe() { spiel.hilfe = !spiel.hilfe; },
     weiter() { weiter(); return true; },
     blase(w) { blase(Number(w)); return true; },
-    abbrechen() { halt(); spiel = null; a.setup = null; window.scrollTo(0, 0); },
-    nochmal() { const { id, nur } = spiel; halt(); spiel = null; start(id, nur); return true; },
-    spielVerb(w) { halt(); spiel = null; a.setup = a.linie = a.bahnhof = null; a.tab = "fahrplan"; oeffneVerb(w); window.scrollTo(0, 0); },
+    abbrechen() { halt(); spiel = null; a.setup = a.nurLinie = null; window.scrollTo(0, 0); },
+    nochmal() { const { id, b } = spiel; halt(); spiel = null; start(id, b); return true; },
+    spielVerb(w) { halt(); spiel = null; a.setup = a.nurLinie = a.linie = a.bahnhof = null; a.tab = "fahrplan"; oeffneVerb(w); window.scrollTo(0, 0); },
     einzeln() { a.einzeln = !a.einzeln; },
     neuJahr(w) { a.neu = { jahr: Number(w), unite: null }; },
     neuUnite(w) { a.neu.unite = Number(w); },
@@ -958,7 +1029,7 @@
   });
   function ausHash() {
     const t = location.hash.slice(1);
-    if (TABS[t]) { a.tab = t; a.setup = a.linie = a.verb = a.bahnhof = null; }
+    if (TABS[t]) { a.tab = t; a.setup = a.nurLinie = a.linie = a.verb = a.bahnhof = null; }
   }
   window.addEventListener("hashchange", () => { if (!spiel) { ausHash(); zeige(); } });
   ausHash();
