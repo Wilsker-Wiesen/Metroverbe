@@ -893,7 +893,7 @@
     return `<section class="frage" data-l="${q.v.typ}">${marke(q.v.typ, true)}${kopfFrage(q, offen)}</section>
       <div class="optionen${breit ? " breit" : ""}">${ops}</div>
       ${rueck}
-      ${!offen && !s.uhr ? `<button class="knopf weiter" data-a="weiter">${s.zahl >= s.g.ziel ? "Zum Ergebnis" : "Weiter"}</button>` : ""}`;
+      ${!offen && !s.uhr ? `<button class="knopf weiter" data-a="weiter">${s.zahl >= s.g.ziel ? "Zum Ergebnis" : "Nächste Station"}</button>` : ""}`;
   }
   function spielReihe() {
     const r = spiel.r;
